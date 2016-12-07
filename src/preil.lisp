@@ -20,17 +20,62 @@
 
 
 (defstruct world
-  (clauses nil))
+  (clauses nil)
+  (parent nil))
 
-(defmacro with-world ((&optional (world (make-world))) &body body)
+(defmacro with-world ((&optional (world (make-world :parent *world*))) &body body)
   `(let ((*world* ,world))
      ,@body))
 
+(defun collect-variables (term)
+  (let ((variables nil))
+    (labels ((f (term)
+               (cond
+                 ((and (variablep term)
+                       (not (member term variables)))
+                  (push term variables))
+                 ((consp term)
+                  (f (car term))
+                  (f (cdr term))))))
+      (f term))
+    variables))
+
+(defun cleanse-term (term)
+  (let ((new-variable-alist
+         (loop
+            for variable in (collect-variables term)
+            when (string/= variable "_")
+            collect (cons variable (gensym (symbol-name variable))))))
+    (labels ((f (term)
+               (cond
+                 ((variablep term)
+                  (if (string= term "_")
+                      (gensym "_")
+                      (cdr (assoc term new-variable-alist))))
+                 ((consp term)
+                  (let ((car (f (car term)))
+                        (cdr (f (cdr term))))
+                    (if (and (eq car (car term))
+                             (eq cdr (cdr term)))
+                        term
+                        (cons car cdr))))
+                 (t
+                  term))))
+      (f term))))
+
 (defun add-clause (head body)
   (setf (slot-value *world* 'clauses)
-        (append
-         (slot-value *world* 'clauses)
-         (list (cons head body)))))
+        (append (slot-value *world* 'clauses)
+                (list (cleanse-term (cons head body))))))
+
+(defmacro do-clause ((clause) &body body)
+  (let ((world (gensym)))
+  `(loop
+      with ,world = *world*
+      while ,world
+      do (dolist (,clause (world-clauses ,world))
+           ,@body)
+        (setf ,world (world-parent ,world)))))
 
 (defun variablep (object)
   (and (symbolp object)
@@ -75,7 +120,7 @@
            (if pair
                (sub (cdr pair) bindings)
                term))
-         term))
+         (gensym "_")))
     ((consp term)
      (let ((car (sub (car term) bindings))
            (cdr (sub (cdr term) bindings)))
@@ -95,7 +140,20 @@
     (dolist (clause (slot-value *world* 'clauses))
       (multiple-value-bind (matched bindings) (unify goal (car clause))
         (when matched
-          (exec (sub (append (cdr clause) goals) bindings)
+          '(format t "!~a~%~a~%~a~%~a~%~%" term goal clause bindings)
+          (setf bindings
+                (append bindings
+                        (loop
+                           for variable in (collect-variables (cdr clause))
+                           unless (assoc variable bindings)
+                           collect (cons variable
+                                         (if (string= variable "_")
+                                             variable!
+                                             (gensym (symbol-name variable)))))))
+          (exec (append (sub (cdr clause)
+                             bindings)
+                        (sub goals
+                             bindings))
                 (sub term bindings)))))))
 
 (defun solve (term goals *resolved-function*)
@@ -128,7 +186,7 @@
        (solve ',term ',clauses
               (lambda (term)
                 (push term ,result)))
-       ,(nreverse result))))
+       (nreverse ,result))))
 
 (defmacro ?print (term &body clauses)
   `(solve ',term ',clauses #'print))

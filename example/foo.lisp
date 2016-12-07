@@ -19,4 +19,18 @@
 
   (print (? (member 1 (1 2 3))))
   (print (? (member 3 (1 2 3))))
-  (print (? (member 4 (1 2 3)))))
+  (print (? (member 4 (1 2 3))))
+  (print (?1 _x
+             (member a _x)))
+  (print (?1 _x
+             (member a _x)
+             (member b _x)
+             (member c _x)))
+
+  (-- (append () _xs _xs))
+  (-- (append (_x . _xs) _ys (_x . _zs))
+      (append _xs _ys _zs))
+
+  (print (?all _x
+               (append (1 2 3) (a b c) _x)))
+  )
