@@ -21,6 +21,7 @@
 
 (defstruct world
   (clauses nil)
+  (predicates nil)
   (parent nil))
 
 (defmacro with-world ((&optional (world (make-world :parent *world*))) &body body)
@@ -64,9 +65,50 @@
       (f term))))
 
 (defun add-clause (head body)
-  (setf (slot-value *world* 'clauses)
-        (append (slot-value *world* 'clauses)
+  (setf (world-clauses *world*)
+        (append (world-clauses *world*)
                 (list (cleanse-term (cons head body))))))
+
+(defun add-predicate (head function)
+  (setf (world-predicates *world*)
+        (append (world-predicates *world*)
+                (list (cons (cleanse-term head) function)))))
+#|
+(%- (add x y _z)
+    (+ x y))
+(%m (add x y _z)
+  (_z)
+  (let ((a '(1 2 3 4)))
+    (lambda ()
+      (pop a))))
+
+%p, %s, %g
+
+(%p (add x y z)
+  (= (+ x y) z))
+(%s (add x y _z)
+  (_z)
+  (values (+ x y)))
+(%g (add x y _z)
+  (_z)
+  (lambda ()
+    (values 1)))
+|#
+
+#|
+(defmacro %p (head &body body)
+  `(add-predicate ,head
+                  (lambda ,head
+                    (lambda ()
+                      (and (progn ,@body)
+                           (values t))))))
+
+(defmacro %s (head &body body)
+  `(add-predicate ,head
+                  (lambda ,head
+                    (lambda ()
+                      ,@body))))
+|#
 
 (defmacro do-clause ((clause) &body body)
   (let ((world (gensym)))
@@ -167,26 +209,26 @@
 
 (defmacro ?1 (term &body clauses)
   `(handler-case
-       (solve ',term ',clauses
+       (solve ',term (list ,@clauses)
               (lambda (result)
                 (error '?1-end :result result)))
      (?1-end (c)
        (slot-value c 'result))))
 
 (defmacro ? (&body clauses)
-  `(?1 t ,@clauses))
+  `(?1 't ,@clauses))
 
 (defmacro ?do ((variables &body body) &rest clauses)
-  `(solve ',variables ',clauses
+  `(solve ',variables (list ,@clauses)
           (lambda ,variables ,@body)))
 
 (defmacro ?all (term &body clauses)
   (let ((result (gensym)))
     `(let ((,result nil))
-       (solve ',term ',clauses
+       (solve ',term (list ,@clauses)
               (lambda (term)
                 (push term ,result)))
        (nreverse ,result))))
 
 (defmacro ?print (term &body clauses)
-  `(solve ',term ',clauses #'print))
+  `(solve ',term (list ,@clauses) #'print))
