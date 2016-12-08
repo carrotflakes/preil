@@ -24,6 +24,11 @@
   (predicates nil)
   (parent nil))
 
+(defun eq* (l r)
+	(if (stringp l)
+			(and (stringp r) (string= l r))
+		(eq l r)))
+
 (defmacro with-world ((&optional (world (make-world :parent *world*))) &body body)
   `(let ((*world* ,world))
      ,@body))
@@ -56,8 +61,8 @@
                  ((consp term)
                   (let ((car (f (car term)))
                         (cdr (f (cdr term))))
-                    (if (and (eq car (car term))
-                             (eq cdr (cdr term)))
+                    (if (and (eq* car (car term))
+                             (eq* cdr (cdr term)))
                         term
                         (cons car cdr))))
                  (t
@@ -137,7 +142,7 @@
         term2 (unified-value term2))
 
   (cond
-    ((eq term1 term2)
+    ((eq* term1 term2)
      t)
     ((variablep term1)
      (when (string= term1 "_") (return-from %unify t))
@@ -166,8 +171,8 @@
     ((consp term)
      (let ((car (sub (car term) bindings))
            (cdr (sub (cdr term) bindings)))
-       (if (and (eq car (car term))
-                (eq cdr (cdr term)))
+       (if (and (eq* car (car term))
+                (eq* cdr (cdr term)))
            term
            (cons car cdr))))
     (t
