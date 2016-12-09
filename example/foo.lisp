@@ -4,60 +4,68 @@
 (use-package :preil)
 
 (with-world ()
-  (-- (人間 ソクラテス))
-  (-- (人間 アリストテレス))
-  (-- (死ぬ _x)
-      (人間 _x))
+  (<- (人間 ソクラテス))
+  (<- (人間 アリストテレス))
+  (<- (死ぬ ?x)
+      (人間 ?x))
 
-  (?print _x
-          '(死ぬ _x)))
+  (do-solve
+      ((?x) (print ?x))
+    '(死ぬ ?x)))
 
 (with-world ()
-  (-- (member _x (_x . _)))
-  (-- (member _x (_ . _y))
-      (member _x _y))
+  (<- (member ?x (?x . ?)))
+  (<- (member ?x (? . ?y))
+      (member ?x ?y))
 
-  (print (? '(member 1 (1 2 3))))
-  (print (? '(member 3 (1 2 3))))
-  (print (? '(member 4 (1 2 3))))
-  (print (?1 _x
-             '(member a _x)))
-  (print (?1 _x
-             '(member a _x)
-             '(member b _x)
-             '(member c _x)))
+  (print (solvep '(member 1 (1 2 3))))
+  (print (solvep '(member 3 (1 2 3))))
+  (print (solvep '(member 4 (1 2 3))))
+  (print (solve-1 ?x
+                  '(member a ?x)))
+  (print (solve-1 ?x
+                  '(member a ?x)
+                  '(member b ?x)
+                  '(member c ?x)))
 
-  (-- (append () _xs _xs))
-  (-- (append (_x . _xs) _ys (_x . _zs))
-      (append _xs _ys _zs))
+  (<- (append () ?xs ?xs))
+  (<- (append (?x . ?xs) ?ys (?x . ?zs))
+      (append ?xs ?ys ?zs))
 
-  (print (?all _x
-               '(append (1 2 3) (a b c) _x)))
+  (print (solve-all ?x
+                    '(append (1 2 3) (a b c) ?x)))
 
-  (-- (reverse _xs _ys)
-      (reverse _xs () _ys))
-  (-- (reverse (_x . _xs) _ys _zs)
-      (reverse _xs (_x . _ys) _zs))
-  (-- (reverse () _ys _ys))
+  (<- (reverse ?xs ?ys)
+      (reverse ?xs () ?ys))
+  (<- (reverse (?x . ?xs) ?ys ?zs)
+      (reverse ?xs (?x . ?ys) ?zs))
+  (<- (reverse () ?ys ?ys))
 
-  (-- (= _x _x))
+  (<- (= ?x ?x))
 
-  (print (?all _z
-               '(= _x (1 2 3))
-               '(reverse _x _y)
-               '(append _x _y _z)))
+  (print (solve-all ?z
+                    '(= ?x (1 2 3))
+                    '(reverse ?x ?y)
+                    '(append ?x ?y ?z)))
 
-  (print (?all (_x _y)
-               '(append _x _y (1 2 3 4))))
+  (print (solve-all (?x ?y)
+                    '(append ?x ?y (1 2 3 4))))
 
-  (-- (conc () ()))
-  (-- (conc (() . _xss) _ys)
-      (conc _xss _ys))
-  (-- (conc ((_x . _xs) . _xss) (_x . _ys))
-      (conc (_xs . _xss) _ys))
+  (<- (conc () ()))
+  (<- (conc (() . ?xss) ?ys)
+      (conc ?xss ?ys))
+  (<- (conc ((?x . ?xs) . ?xss) (?x . ?ys))
+      (conc (?xs . ?xss) ?ys))
 
-  (print (?all _x
-               '(conc ((1 2) (3) (4 5 6)) _x)))
-  (print (?all (_x _y _z)
-               '(conc (_x _y _z) (1 2 3))))
+  (print (solve-all ?x
+                    '(conc ((1 2) (3) (4 5 6)) ?x)))
+  (print (solve-all (?x ?y ?z)
+                    '(conc (?x ?y ?z) (1 2 3))))
+
+  (print (solve-1 ?x
+                  '(= ?x (? ? ? ? ?))
+                  '(member 1 ?x)
+                  '(member 2 ?x)
+                  '(member 3 ?x)
+                  '(reverse ?x ?x)))
   )

@@ -5,12 +5,11 @@
            #:make-world
            #:with-world
            #:solve
-           #:--
-           #:?
-           #:?1
-           #:?all
-           #:?do
-           #:?print))
+           #:<-
+           #:solvep
+           #:solve-1
+           #:solve-all
+           #:do-solve))
 (in-package :preil)
 
 
@@ -50,13 +49,13 @@
   (let ((new-variable-alist
          (loop
             for variable in (collect-variables term)
-            when (string/= variable "_")
+            when (string/= variable "?")
             collect (cons variable (gensym (symbol-name variable))))))
     (labels ((f (term)
                (cond
                  ((variablep term)
-                  (if (string= term "_")
-                      (gensym "_")
+                  (if (string= term "?")
+                      (gensym "?")
                       (cdr (assoc term new-variable-alist))))
                  ((consp term)
                   (let ((car (f (car term)))
@@ -68,6 +67,22 @@
                  (t
                   term))))
       (f term))))
+
+(defun cleanse-term* (term)
+  (labels ((f (term)
+             (cond
+               ((and (variablep term) (string= term "?"))
+                (gensym "?"))
+               ((consp term)
+                (let ((car (f (car term)))
+                      (cdr (f (cdr term))))
+                  (if (and (eq* car (car term))
+                           (eq* cdr (cdr term)))
+                      term
+                      (cons car cdr))))
+               (t
+                term))))
+    (f term)))
 
 (defun add-clause (head body)
   (setf (world-clauses *world*)
@@ -126,7 +141,7 @@
 
 (defun variablep (object)
   (and (symbolp object)
-       (string= object "_" :end1 1 :end2 1)))
+       (string= object "?" :end1 1 :end2 1)))
 
 (defun unified-value (term)
   (if (variablep term)
@@ -145,11 +160,11 @@
     ((eq* term1 term2)
      t)
     ((variablep term1)
-     (when (string= term1 "_") (return-from %unify t))
+     (when (string= term1 "?") (return-from %unify t))
      (push (cons term1 term2) *unified*)
      t)
     ((variablep term2)
-     (when (string= term2 "_") (return-from %unify t))
+     (when (string= term2 "?") (return-from %unify t))
      (push (cons term2 term1) *unified*)
      t)
     ((and (consp term1) (consp term2))
@@ -162,12 +177,12 @@
 (defun sub (term bindings)
   (cond
     ((variablep term)
-     (if (string/= term "_")
+     (if (string/= term "?")
          (let ((pair (assoc term bindings)))
            (if pair
                (sub (cdr pair) bindings)
                term))
-         (gensym "_")))
+         (gensym "?")))
     ((consp term)
      (let ((car (sub (car term) bindings))
            (cdr (sub (cdr term) bindings)))
@@ -194,7 +209,7 @@
                            for variable in (collect-variables (cdr clause))
                            unless (assoc variable bindings)
                            collect (cons variable
-                                         (if (string= variable "_")
+                                         (if (string= variable "?")
                                              variable!
                                              (gensym (symbol-name variable)))))))
           (exec (append (sub (cdr clause)
@@ -204,36 +219,33 @@
                 (sub term bindings)))))))
 
 (defun solve (term goals *resolved-function*)
-  (exec goals term))
+  (exec (cleanse-term* goals) term))
 
-(defmacro -- (head &body body)
+(defmacro <- (head &body body)
   `(add-clause ',head ',body))
 
-(define-condition ?1-end (simple-error)
+(define-condition solve-1-end (simple-error)
   ((result :initarg :result)))
 
-(defmacro ?1 (term &body clauses)
+(defmacro solve-1 (term &body clauses)
   `(handler-case
        (solve ',term (list ,@clauses)
               (lambda (result)
-                (error '?1-end :result result)))
-     (?1-end (c)
+                (error 'solve-1-end :result result)))
+     (solve-1-end (c)
        (slot-value c 'result))))
 
-(defmacro ? (&body clauses)
-  `(?1 't ,@clauses))
+(defmacro solvep (&body clauses)
+  `(solve-1 t ,@clauses))
 
-(defmacro ?do ((variables &body body) &rest clauses)
+(defmacro do-solve ((variables &body body) &rest clauses)
   `(solve ',variables (list ,@clauses)
           (lambda ,variables ,@body)))
 
-(defmacro ?all (term &body clauses)
+(defmacro solve-all (term &body clauses)
   (let ((result (gensym)))
     `(let ((,result nil))
        (solve ',term (list ,@clauses)
               (lambda (term)
                 (push term ,result)))
        (nreverse ,result))))
-
-(defmacro ?print (term &body clauses)
-  `(solve ',term (list ,@clauses) #'print))
