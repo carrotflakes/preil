@@ -281,8 +281,11 @@
   `(solve-1 t ,@clauses))
 
 (defmacro do-solve ((variables &body body) &rest clauses)
+  (let ((arguments (gensym "ARGUMENTS")))
   `(solve ',variables (list ,@clauses)
-          (lambda ,variables ,@body)))
+          (lambda (,arguments)
+            (destructuring-bind ,variables ,arguments
+             ,@body)))))
 
 (defmacro solve-all (term &body clauses)
   (let ((result (gensym)))
