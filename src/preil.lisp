@@ -12,7 +12,8 @@
            #:do-solve
            #:%p
            #:%g
-           #:ret))
+           #:ret
+           #:preil-defun))
 (in-package :preil)
 
 
@@ -36,10 +37,6 @@
 	(if (stringp l)
 			(and (stringp r) (string= l r))
 		(eq l r)))
-
-(defmacro with-world ((&optional (world (make-world :parent *world*))) &body body)
-  `(let ((*world* ,world))
-     ,@body))
 
 (defun collect-variables (term)
   (let ((variables nil))
@@ -97,40 +94,6 @@
           (append (world-predicates *world*)
                   (list predicate)))))
 
-;; (defun add-predicate (head bound-variables function)
-;;   (let* ((head-variables (collect-variables head))
-;;          (bindings (variables-cleanse-bindings head-variables))
-;;          (cleansed-head (sub head bindings))
-;;          (predicate (make-predicate :head cleansed-head
-;;                                     :bound-variables (sub bound-variables bindings)
-;;                                     :free-variables (sub (set-difference head-variables bound-variables) bindings)
-;;                                     :function function)))
-;;     (setf (world-predicates *world*)
-;;           (append (world-predicates *world*)
-;;                   (list predicate)))))
-
-#|
-(%- (add x y _z)
-    (+ x y))
-(%m (add x y _z)
-  (_z)
-  (let ((a '(1 2 3 4)))
-    (lambda ()
-      (pop a))))
-
-%p, %s, %g
-
-(%p (add ?x ?y ?z)
-  (= (+ x y) z))
-(%s (add ?x ?y ?z)
-  (?z)
-  (values (+ ?x ?y)))
-(%g (add ?x ?y ?z)
-  (?z)
-  (lambda ()
-    (values 1)))
-|#
-
 ;;(%p (add ?x ?y ?z)
 ;;    (= (+ ?x ?y) ?z))
 (defmacro %p (head &body body)
@@ -144,15 +107,9 @@
                       (and (progn ,@body)
                            (funcall %ret '()))))))
 
-
 ;; (%s (add ?x ?y ?z)
 ;;     (?x ?y)
 ;;     (ret :?z (+ ?x ?y)))
-
-;; (macrolet ((ret (&key :?x ?x :?y ?y)
-;;              (list 'list
-;;                    (list 'cons ''?x '?x)
-;;                    (list 'cons ''?y '?y))))
 
 (defmacro %g (head bound-variables &body body)
   (let* ((head-variables (collect-variables head))
@@ -181,6 +138,15 @@
       with ,world = *world*
       while ,world
       do (dolist (,clause (world-clauses ,world))
+           ,@body)
+        (setf ,world (world-parent ,world)))))
+
+(defmacro do-predicate ((predicate) &body body)
+  (let ((world (gensym)))
+  `(loop
+      with ,world = *world*
+      while ,world
+      do (dolist (,predicate (world-predicates ,world))
            ,@body)
         (setf ,world (world-parent ,world)))))
 
@@ -226,7 +192,7 @@
 
   (let ((goal (pop goals)))
 
-    (dolist (predicate (world-predicates *world*))
+    (do-predicate (predicate)
       (with-slots (head bound-variables free-variables function) predicate
         (multiple-value-bind (matched bindings) (unify goal head)
           (when matched
@@ -240,7 +206,7 @@
                                  (sub term bindings))))
                        parameters)))))))
 
-    (dolist (clause (world-clauses *world*))
+    (do-clause (clause)
       (multiple-value-bind (matched bindings) (unify goal (car clause))
         (when matched
           '(format t "!~a~%~a~%~a~%~a~%~%" term goal clause bindings)
@@ -262,6 +228,17 @@
 (defun solve (term goals *resolved-function*)
   (exec (sub goals '()) term))
 
+
+(defmacro with-world ((&optional (world '(make-world :parent *world*))) &body body)
+  `(let ((*world* ,world))
+     ,@body))
+
+(defmacro preil-defun (name args &body body)
+  (let ((world (gensym "WORLD")))
+    `(let ((,world *world*))
+       (defun ,name ,args
+         (let ((*world* ,world))
+           ,@body)))))
 
 (defmacro <- (head &body body)
   `(add-clause ',head ',body))

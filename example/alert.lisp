@@ -8,8 +8,7 @@
 	(with-mecab ("-d /usr/local/lib/mecab/dic/ipadic")
     (mapcar #'first (parse* text))))
 
-(setf *world* (make-world))
-(with-world (*world*)
+(with-world ()
 
   (%g (parse-integer ?string ?integer)
       (?string)
@@ -20,6 +19,11 @@
       (?integer)
     (and (integerp ?integer)
          (ret :?string (write-to-string ?integer))))
+
+  ;; member
+  (<- (member ?x (?x . ?)))
+  (<- (member ?x (? . ?y))
+      (member ?x ?y))
 
   ;; append
   (<- (append () ?xs ?xs))
@@ -42,8 +46,9 @@
       (助詞に ?助詞に?)
       (命令 ?命令? ?命令))
   (<- (parse ?xs  (?命令 :date ?日付))
-			(conc (?日付? ?命令?) ?xs)
+			(conc (?日付? ?助詞に? ?命令?) ?xs)
       (日付 ?日付? ?日付)
+      (助詞に ?助詞に?)
       (命令 ?命令? ?命令))
   (<- (parse ?xs  (?命令 :time ?時間))
 			(conc (?時間? ?助詞に? ?命令?) ?xs)
@@ -60,6 +65,17 @@
   (<- (日付 ("今日") today))
   (<- (日付 ("明日") tommorow))
   (<- (日付 ("明後日") day-after-tomorrow))
+  (<- (日付 (?d? "日") (:date ?d))
+      (parse-integer ?d? ?d))
+  (<- (日付 (?曜日) (:dow ?曜日))
+      (member ?曜日
+              ("月曜日"
+               "火曜日"
+               "水曜日"
+               "木曜日"
+               "金曜日"
+               "土曜日"
+               "日曜日")))
 
   (<- (時間 (?h? "時" ?m? "分") (?h ?m))
       (parse-integer ?h? ?h)
@@ -72,32 +88,28 @@
   (<- (時間 (?m? "分") (* ?m))
       (parse-integer ?m? ?m))
 
-  #|
-  (<- (時間 (?h "時" ?m "分") (?h ?m)))
-  (<- (時間 (?h ":" ?m) (?h ?m)))
-  (<- (時間 (?h "時") (?h *)))
-  (<- (時間 (?m "分") (* ?m)))
-  |#
-  (<- (命令 ("アラート") アラート))
-  (<- (命令 ("アラート" "し" "て") アラート))
-  (<- (命令 ("アラート" "し" "て") アラート))
-  (<- (命令 ("知らせ" "て") アラート))
+  (<- (命令 ?xs alert)
+      (member ?xs
+              (("アラート")
+               ("アラート" "し" "て")
+               ("通知")
+               ("通知" "し" "て")
+               ("お知らせ")
+               ("お知らせ" "し" "て")
+               ("知らせ" "て"))))
 
-  (defun alert-parse (text)
+  (preil-defun alert-parse (text)
+    (print text)
     (let ((tokens (wakati text)))
-      (solve-all ?result
-                 `(parse ,tokens ?result))))
+      (print (solve-all ?result
+                        `(parse ,tokens ?result)))))
 	)
 
-#|
-(do-solve ((?r) (format t "~{~a~}~%" ?r))
-  `(parse ?r (アラート :time (1 *))))
-
-(do-solve ((?r) (format t "~{~a~}~%" ?r))
-  `(parse ?r (アラート :date tommorow :time (1 0))))
-|#
-
-(print (alert-parse "明日の1時にアラート"))
+(alert-parse "明日の1時にアラート")
+(alert-parse "明日の1時にアラートして")
+(alert-parse "日曜日の1時にアラートして")
+(alert-parse "火曜日に通知して")
+(alert-parse "11日にアラート")
 
 #|
 1時にアラート
