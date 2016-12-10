@@ -66,7 +66,7 @@
       (solve-all ?result
                  `(parse ,tokens ?result))))
 
-	(do-solve ((?r) (print ?r))
+	(do-solve ((?r) (format t "~{~a~}~%" ?r))
     `(parse ?r (アラート :date tommorow :time (1 0))))
 	)
 

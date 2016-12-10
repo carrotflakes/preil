@@ -11,7 +11,6 @@
            #:solve-all
            #:do-solve
            #:%p
-           #:%s
            #:%g
            #:ret))
 (in-package :preil)
@@ -31,7 +30,7 @@
   head
   bound-variables
   free-variables
-  generator)
+  function)
 
 (defun eq* (l r)
 	(if (stringp l)
@@ -89,23 +88,23 @@
         (append (world-clauses *world*)
                 (list (cleanse-term (cons head body))))))
 
-(defun add-predicate (head bound-variables free-variables generator)
+(defun add-predicate (head bound-variables free-variables function)
   (let ((predicate (make-predicate :head head
                                    :bound-variables bound-variables
                                    :free-variables free-variables
-                                   :generator generator)))
+                                   :function function)))
     (setf (world-predicates *world*)
           (append (world-predicates *world*)
                   (list predicate)))))
 
-;; (defun add-predicate (head bound-variables generator)
+;; (defun add-predicate (head bound-variables function)
 ;;   (let* ((head-variables (collect-variables head))
 ;;          (bindings (variables-cleanse-bindings head-variables))
 ;;          (cleansed-head (sub head bindings))
 ;;          (predicate (make-predicate :head cleansed-head
 ;;                                     :bound-variables (sub bound-variables bindings)
 ;;                                     :free-variables (sub (set-difference head-variables bound-variables) bindings)
-;;                                     :generator generator)))
+;;                                     :function function)))
 ;;     (setf (world-predicates *world*)
 ;;           (append (world-predicates *world*)
 ;;                   (list predicate)))))
@@ -137,43 +136,31 @@
 (defmacro %p (head &body body)
   (let* ((head-variables (collect-variables head))
          (bindings (variables-cleanse-bindings head-variables))
-         (cleansed-head (sub head bindings))
-         (first (gensym "FIRST")))
+         (cleansed-head (sub head bindings)))
     `(add-predicate ',cleansed-head
                     ',(sub head-variables bindings)
                     '()
-                    (lambda ,head-variables
-                      (let ((,first t))
-                        (lambda ()
-                          (when ,first
-                            (setf ,first nil)
-                            (and (progn ,@body)
-                                 t))))))))
+                    (lambda (%ret ,@head-variables)
+                      (and (progn ,@body)
+                           (funcall %ret '()))))))
 
 
-;; (%s (add ?x ?y ?z)
-;;     (?x ?y)
-;;     `((,?z . ,(+ ?x ?y))))
 ;; (%s (add ?x ?y ?z)
 ;;     (?x ?y)
 ;;     (ret :?z (+ ?x ?y)))
-;; (%s (add ?x ?y ?z)
-;;     (?x ?y)
-;;     (?z (+ ?x ?y)))
 
 ;; (macrolet ((ret (&key :?x ?x :?y ?y)
 ;;              (list 'list
 ;;                    (list 'cons ''?x '?x)
 ;;                    (list 'cons ''?y '?y))))
 
-(defmacro %s (head bound-variables &body body)
+(defmacro %g (head bound-variables &body body)
   (let* ((head-variables (collect-variables head))
          (bindings (variables-cleanse-bindings head-variables))
          (cleansed-head (sub head bindings))
          (free-variables (set-difference head-variables bound-variables))
-         (first (gensym "FIRST"))
          (ret-macro `(ret (&key ,@free-variables)
-                          (list 'return-from '%s
+                          (list 'funcall '%ret
                                 (list 'list
                                       ,@(loop
                                            for variable in free-variables
@@ -183,44 +170,9 @@
     `(add-predicate ',cleansed-head
                     ',(sub bound-variables bindings)
                     ',(sub free-variables bindings)
-                    (lambda ,bound-variables
-                      (let ((,first t))
-                        (lambda ()
-                          (block %s
-                            (macrolet (,ret-macro)
-                              (when ,first
-                                (setf ,first nil)
-                                ,@body
-                                nil)))))))))
-
-;; (%g (range ?x ?y)
-;;     (?x)
-;;     ((i 0))
-;;     (when (<= (incf i) ?x)
-;;       (ret :?y (1- i))))
-(defmacro %g (head bound-variables let-bindings &body body)
-  (let* ((head-variables (collect-variables head))
-         (bindings (variables-cleanse-bindings head-variables))
-         (cleansed-head (sub head bindings))
-         (free-variables (set-difference head-variables bound-variables))
-         (ret-macro `(ret (&key ,@free-variables)
-                          (list 'return-from '%s
-                                (list 'list
-                                      ,@(loop
-                                           for variable in free-variables
-                                           collect `(list 'cons
-                                                          '',(sub variable bindings)
-                                                          ,variable)))))))
-    `(add-predicate ',cleansed-head
-                    ',(sub bound-variables bindings)
-                    ',(sub free-variables bindings)
-                    (lambda ,bound-variables
-                      (let ,let-bindings
-                        (lambda ()
-                          (block %s
-                            (macrolet (,ret-macro)
-                              ,@body
-                              nil))))))))
+                    (lambda (%ret ,@bound-variables)
+                      (macrolet (,ret-macro)
+                        ,@body)))))
 
 
 (defmacro do-clause ((clause) &body body)
@@ -275,22 +227,18 @@
   (let ((goal (pop goals)))
 
     (dolist (predicate (world-predicates *world*))
-      (with-slots (head bound-variables free-variables generator) predicate
+      (with-slots (head bound-variables free-variables function) predicate
         (multiple-value-bind (matched bindings) (unify goal head)
           (when matched
             (let ((parameters (sub bound-variables bindings)))
               (when (and (notany #'variablep parameters)
                          (every #'variablep (sub free-variables bindings)))
-                (let ((next (apply generator parameters)))
-                  (loop
-                     for bindings* = (funcall next)
-                     while bindings*
-                     do (setf bindings*
-                              (if (eq bindings* t)
-                                  '()
-                                  (append bindings* bindings)))
-                       (exec (sub goals bindings*)
-                             (sub term bindings*))))))))))
+                (apply function
+                       (lambda (bindings*)
+                         (let ((bindings (append bindings* bindings)))
+                           (exec (sub goals bindings)
+                                 (sub term bindings))))
+                       parameters)))))))
 
     (dolist (clause (world-clauses *world*))
       (multiple-value-bind (matched bindings) (unify goal (car clause))
