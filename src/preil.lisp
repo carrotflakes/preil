@@ -9,7 +9,11 @@
            #:solvep
            #:solve-1
            #:solve-all
-           #:do-solve))
+           #:do-solve
+           #:%p
+           #:%s
+           #:%g
+           #:ret))
 (in-package :preil)
 
 
@@ -22,6 +26,12 @@
   (clauses nil)
   (predicates nil)
   (parent nil))
+
+(defstruct predicate
+  head
+  bound-variables
+  free-variables
+  generator)
 
 (defun eq* (l r)
 	(if (stringp l)
@@ -45,54 +55,61 @@
       (f term))
     variables))
 
-(defun cleanse-term (term)
-  (let ((new-variable-alist
-         (loop
-            for variable in (collect-variables term)
-            when (string/= variable "?")
-            collect (cons variable (gensym (symbol-name variable))))))
-    (labels ((f (term)
-               (cond
-                 ((variablep term)
-                  (if (string= term "?")
-                      (gensym "?")
-                      (cdr (assoc term new-variable-alist))))
-                 ((consp term)
-                  (let ((car (f (car term)))
-                        (cdr (f (cdr term))))
-                    (if (and (eq* car (car term))
-                             (eq* cdr (cdr term)))
-                        term
-                        (cons car cdr))))
-                 (t
-                  term))))
-      (f term))))
+(defun sub (term bindings)
+  (cond
+    ((variablep term)
+     (if (string/= term "?")
+         (let ((pair (assoc term bindings)))
+           (if pair
+               (sub (cdr pair) bindings)
+               term))
+         (gensym "?")))
+    ((consp term)
+     (let ((car (sub (car term) bindings))
+           (cdr (sub (cdr term) bindings)))
+       (if (and (eq* car (car term))
+                (eq* cdr (cdr term)))
+           term
+           (cons car cdr))))
+    (t
+     term)))
 
-(defun cleanse-term* (term)
-  (labels ((f (term)
-             (cond
-               ((and (variablep term) (string= term "?"))
-                (gensym "?"))
-               ((consp term)
-                (let ((car (f (car term)))
-                      (cdr (f (cdr term))))
-                  (if (and (eq* car (car term))
-                           (eq* cdr (cdr term)))
-                      term
-                      (cons car cdr))))
-               (t
-                term))))
-    (f term)))
+(defun variables-cleanse-bindings (variables)
+  (loop
+     for variable in variables
+     when (string/= variable "?")
+     collect (cons variable (gensym (symbol-name variable)))))
+
+(defun cleanse-term (term)
+  (sub term
+       (variables-cleanse-bindings (collect-variables term))))
 
 (defun add-clause (head body)
   (setf (world-clauses *world*)
         (append (world-clauses *world*)
                 (list (cleanse-term (cons head body))))))
 
-(defun add-predicate (head function)
-  (setf (world-predicates *world*)
-        (append (world-predicates *world*)
-                (list (cons (cleanse-term head) function)))))
+(defun add-predicate (head bound-variables free-variables generator)
+  (let ((predicate (make-predicate :head head
+                                   :bound-variables bound-variables
+                                   :free-variables free-variables
+                                   :generator generator)))
+    (setf (world-predicates *world*)
+          (append (world-predicates *world*)
+                  (list predicate)))))
+
+;; (defun add-predicate (head bound-variables generator)
+;;   (let* ((head-variables (collect-variables head))
+;;          (bindings (variables-cleanse-bindings head-variables))
+;;          (cleansed-head (sub head bindings))
+;;          (predicate (make-predicate :head cleansed-head
+;;                                     :bound-variables (sub bound-variables bindings)
+;;                                     :free-variables (sub (set-difference head-variables bound-variables) bindings)
+;;                                     :generator generator)))
+;;     (setf (world-predicates *world*)
+;;           (append (world-predicates *world*)
+;;                   (list predicate)))))
+
 #|
 (%- (add x y _z)
     (+ x y))
@@ -104,31 +121,107 @@
 
 %p, %s, %g
 
-(%p (add x y z)
+(%p (add ?x ?y ?z)
   (= (+ x y) z))
-(%s (add x y _z)
-  (_z)
-  (values (+ x y)))
-(%g (add x y _z)
-  (_z)
+(%s (add ?x ?y ?z)
+  (?z)
+  (values (+ ?x ?y)))
+(%g (add ?x ?y ?z)
+  (?z)
   (lambda ()
     (values 1)))
 |#
 
-#|
+;;(%p (add ?x ?y ?z)
+;;    (= (+ ?x ?y) ?z))
 (defmacro %p (head &body body)
-  `(add-predicate ,head
-                  (lambda ,head
-                    (lambda ()
-                      (and (progn ,@body)
-                           (values t))))))
+  (let* ((head-variables (collect-variables head))
+         (bindings (variables-cleanse-bindings head-variables))
+         (cleansed-head (sub head bindings))
+         (first (gensym "FIRST")))
+    `(add-predicate ',cleansed-head
+                    ',(sub head-variables bindings)
+                    '()
+                    (lambda ,head-variables
+                      (let ((,first t))
+                        (lambda ()
+                          (when ,first
+                            (setf ,first nil)
+                            (and (progn ,@body)
+                                 t))))))))
 
-(defmacro %s (head &body body)
-  `(add-predicate ,head
-                  (lambda ,head
-                    (lambda ()
-                      ,@body))))
-|#
+
+;; (%s (add ?x ?y ?z)
+;;     (?x ?y)
+;;     `((,?z . ,(+ ?x ?y))))
+;; (%s (add ?x ?y ?z)
+;;     (?x ?y)
+;;     (ret :?z (+ ?x ?y)))
+;; (%s (add ?x ?y ?z)
+;;     (?x ?y)
+;;     (?z (+ ?x ?y)))
+
+;; (macrolet ((ret (&key :?x ?x :?y ?y)
+;;              (list 'list
+;;                    (list 'cons ''?x '?x)
+;;                    (list 'cons ''?y '?y))))
+
+(defmacro %s (head bound-variables &body body)
+  (let* ((head-variables (collect-variables head))
+         (bindings (variables-cleanse-bindings head-variables))
+         (cleansed-head (sub head bindings))
+         (free-variables (set-difference head-variables bound-variables))
+         (first (gensym "FIRST"))
+         (ret-macro `(ret (&key ,@free-variables)
+                          (list 'return-from '%s
+                                (list 'list
+                                      ,@(loop
+                                           for variable in free-variables
+                                           collect `(list 'cons
+                                                          '',(sub variable bindings)
+                                                          ,variable)))))))
+    `(add-predicate ',cleansed-head
+                    ',(sub bound-variables bindings)
+                    ',(sub free-variables bindings)
+                    (lambda ,bound-variables
+                      (let ((,first t))
+                        (lambda ()
+                          (block %s
+                            (macrolet (,ret-macro)
+                              (when ,first
+                                (setf ,first nil)
+                                ,@body
+                                nil)))))))))
+
+;; (%g (range ?x ?y)
+;;     (?x)
+;;     ((i 0))
+;;     (when (<= (incf i) ?x)
+;;       (ret :?y (1- i))))
+(defmacro %g (head bound-variables let-bindings &body body)
+  (let* ((head-variables (collect-variables head))
+         (bindings (variables-cleanse-bindings head-variables))
+         (cleansed-head (sub head bindings))
+         (free-variables (set-difference head-variables bound-variables))
+         (ret-macro `(ret (&key ,@free-variables)
+                          (list 'return-from '%s
+                                (list 'list
+                                      ,@(loop
+                                           for variable in free-variables
+                                           collect `(list 'cons
+                                                          '',(sub variable bindings)
+                                                          ,variable)))))))
+    `(add-predicate ',cleansed-head
+                    ',(sub bound-variables bindings)
+                    ',(sub free-variables bindings)
+                    (lambda ,bound-variables
+                      (let ,let-bindings
+                        (lambda ()
+                          (block %s
+                            (macrolet (,ret-macro)
+                              ,@body
+                              nil))))))))
+
 
 (defmacro do-clause ((clause) &body body)
   (let ((world (gensym)))
@@ -174,32 +267,32 @@
 (defun unify (term1 term2 &aux (*unified* ()))
   (values (%unify term1 term2) *unified*))
 
-(defun sub (term bindings)
-  (cond
-    ((variablep term)
-     (if (string/= term "?")
-         (let ((pair (assoc term bindings)))
-           (if pair
-               (sub (cdr pair) bindings)
-               term))
-         (gensym "?")))
-    ((consp term)
-     (let ((car (sub (car term) bindings))
-           (cdr (sub (cdr term) bindings)))
-       (if (and (eq* car (car term))
-                (eq* cdr (cdr term)))
-           term
-           (cons car cdr))))
-    (t
-     term)))
-
 (defun exec (goals term)
   (when (null goals)
     (when *resolved-function*
       (funcall *resolved-function* term)))
 
   (let ((goal (pop goals)))
-    (dolist (clause (slot-value *world* 'clauses))
+
+    (dolist (predicate (world-predicates *world*))
+      (with-slots (head bound-variables free-variables generator) predicate
+        (multiple-value-bind (matched bindings) (unify goal head)
+          (when matched
+            (let ((parameters (sub bound-variables bindings)))
+              (when (and (notany #'variablep parameters)
+                         (every #'variablep (sub free-variables bindings)))
+                (let ((next (apply generator parameters)))
+                  (loop
+                     for bindings* = (funcall next)
+                     while bindings*
+                     do (setf bindings*
+                              (if (eq bindings* t)
+                                  '()
+                                  (append bindings* bindings)))
+                       (exec (sub goals bindings*)
+                             (sub term bindings*))))))))))
+
+    (dolist (clause (world-clauses *world*))
       (multiple-value-bind (matched bindings) (unify goal (car clause))
         (when matched
           '(format t "!~a~%~a~%~a~%~a~%~%" term goal clause bindings)
@@ -210,7 +303,7 @@
                            unless (assoc variable bindings)
                            collect (cons variable
                                          (if (string= variable "?")
-                                             variable!
+                                             variable
                                              (gensym (symbol-name variable)))))))
           (exec (append (sub (cdr clause)
                              bindings)
@@ -219,7 +312,8 @@
                 (sub term bindings)))))))
 
 (defun solve (term goals *resolved-function*)
-  (exec (cleanse-term* goals) term))
+  (exec (sub goals '()) term))
+
 
 (defmacro <- (head &body body)
   `(add-clause ',head ',body))
