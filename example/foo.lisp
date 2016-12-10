@@ -68,4 +68,17 @@
                   '(member 2 ?x)
                   '(member 3 ?x)
                   '(reverse ?x ?x)))
+
+  (<- (conc* () ()))
+  (<- (conc* ((?x) . ?xss) (?x . ?ys))
+      (conc* ?xss ?ys))
+  (<- (conc* ((?x ?x* . ?xs) . ?xss) (?x . ?ys))
+    (conc* ((?x* . ?xs) . ?xss) ?ys))
+
+  (print (solve-all ?x
+                    '(conc* ((1 2) (3) (4 5 6)) ?x)))
+  (print (solve-all (?x ?y ?z)
+                    '(conc* (?x ?y ?z) (1 2 3))))
+  (print (solve-all (?x ?y ?z)
+                    '(conc* (?x ?y ?z) (1 2 3 4))))
   )
