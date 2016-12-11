@@ -4,9 +4,16 @@
 (use-package '(:preil :cl-mecab))
 
 
+(defun normalize (text)
+  (ppcre:regex-replace-all
+   "[０-９]" text
+   (lambda (target-string start end match-start match-end reg-starts reg-ends)
+     (declare (ignore start end match-end reg-starts reg-ends))
+     (format nil "~a" (code-char (+ (char-code (aref target-string match-start)) #.(- (char-code #\0) (char-code #\０))))))))
+
 (defun wakati (text)
 	(with-mecab ("-d /usr/local/lib/mecab/dic/ipadic")
-    (mapcar #'first (parse* text))))
+    (mapcar #'first (parse* (normalize text)))))
 
 (with-world ()
 
@@ -55,6 +62,11 @@
       (時間 ?時間? ?時間)
       (助詞に ?助詞に?)
       (命令 ?命令? ?命令))
+  (<- (parse ?xs  (?命令 :after ?after))
+			(conc (?時間後? ?助詞に? ?命令?) ?xs)
+      (時間後 ?時間後? ?after)
+      (助詞に ?助詞に?)
+      (命令 ?命令? ?命令))
 
   (<- (助詞の ("の")))
   (<- (助詞の ()))
@@ -77,7 +89,7 @@
                "土曜日"
                "日曜日")))
 
-  (<- (時間 (?h? "時" ?m? "分") (?h ?m))
+  (<- (時間 (?h? "時" ?ms? "分") (?h ?m))
       (parse-integer ?h? ?h)
       (parse-integer ?m? ?m))
   (<- (時間 (?h? ":" ?m?) (?h ?m))
@@ -86,6 +98,14 @@
   (<- (時間 (?h? "時") (?h *))
       (parse-integer ?h? ?h))
   (<- (時間 (?m? "分") (* ?m))
+      (parse-integer ?m? ?m))
+
+  (<- (時間後 (?h? "時間" ?m? "分" "後") (?h ?m))
+      (parse-integer ?h? ?h)
+      (parse-integer ?m? ?m))
+  (<- (時間後 (?h? "時間" "後") (?h *))
+      (parse-integer ?h? ?h))
+  (<- (時間後 (?m? "分" "後") (* ?m))
       (parse-integer ?m? ?m))
 
   (<- (命令 ?xs alert)
@@ -110,6 +130,9 @@
 (alert-parse "日曜日の1時にアラートして")
 (alert-parse "火曜日に通知して")
 (alert-parse "11日にアラート")
+(alert-parse "２分後アラート")
+(alert-parse "10時間後にアラート")
+(alert-parse "10時間２分後にアラート")
 
 #|
 1時にアラート
