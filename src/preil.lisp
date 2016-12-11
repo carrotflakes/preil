@@ -10,9 +10,8 @@
            #:solve-1
            #:solve-all
            #:do-solve
-           #:%p
-           #:%g
-           #:ret
+           #:%-
+           #:satisfy
            #:preil-defun))
 (in-package :preil)
 
@@ -29,9 +28,7 @@
 
 (defstruct predicate
   head
-  bound-variables
-  free-variables
-  function)
+  patterns) ; A list of (bound-variables free-variables function)
 
 (defun eq* (l r)
 	(if (stringp l)
@@ -85,51 +82,37 @@
         (append (world-clauses *world*)
                 (list (cleanse-term (cons head body))))))
 
-(defun add-predicate (head bound-variables free-variables function)
+(defun add-predicate (head patterns)
   (let ((predicate (make-predicate :head head
-                                   :bound-variables bound-variables
-                                   :free-variables free-variables
-                                   :function function)))
+                                   :patterns patterns)))
     (setf (world-predicates *world*)
           (append (world-predicates *world*)
                   (list predicate)))))
 
-;;(%p (add ?x ?y ?z)
-;;    (= (+ ?x ?y) ?z))
-(defmacro %p (head &body body)
+(defmacro %- (head &body patterns)
   (let* ((head-variables (collect-variables head))
          (bindings (variables-cleanse-bindings head-variables))
          (cleansed-head (sub head bindings)))
-    `(add-predicate ',cleansed-head
-                    ',(sub head-variables bindings)
-                    '()
-                    (lambda (%ret ,@head-variables)
-                      (and (progn ,@body)
-                           (funcall %ret '()))))))
+    `(add-predicate
+      ',cleansed-head
+      (list ,@(loop
+                 for (bound-variables . body) in patterns
+                 for free-variables = (set-difference head-variables bound-variables)
+                 for satisfy-macro = `(satisfy (&key ,@free-variables)
+                                               (list 'funcall '%satisfy
+                                                     (list 'list
+                                                           ,@(loop
+                                                                for variable in free-variables
+                                                                collect `(list 'cons
+                                                                               '',(sub variable bindings)
+                                                                               ,variable)))))
+                 collect `(list
+                           ',(sub bound-variables bindings)
+                           ',(sub free-variables bindings)
+                           (lambda (%satisfy ,@bound-variables)
+                             (macrolet (,satisfy-macro)
+                               ,@body))))))))
 
-;; (%s (add ?x ?y ?z)
-;;     (?x ?y)
-;;     (ret :?z (+ ?x ?y)))
-
-(defmacro %g (head bound-variables &body body)
-  (let* ((head-variables (collect-variables head))
-         (bindings (variables-cleanse-bindings head-variables))
-         (cleansed-head (sub head bindings))
-         (free-variables (set-difference head-variables bound-variables))
-         (ret-macro `(ret (&key ,@free-variables)
-                          (list 'funcall '%ret
-                                (list 'list
-                                      ,@(loop
-                                           for variable in free-variables
-                                           collect `(list 'cons
-                                                          '',(sub variable bindings)
-                                                          ,variable)))))))
-    `(add-predicate ',cleansed-head
-                    ',(sub bound-variables bindings)
-                    ',(sub free-variables bindings)
-                    (lambda (%ret ,@bound-variables)
-                      (macrolet (,ret-macro)
-                        ,@body)))))
 
 
 (defmacro do-clause ((clause) &body body)
@@ -193,18 +176,25 @@
   (let ((goal (pop goals)))
 
     (do-predicate (predicate)
-      (with-slots (head bound-variables free-variables function) predicate
-        (multiple-value-bind (matched bindings) (unify goal head)
-          (when matched
-            (let ((parameters (sub bound-variables bindings)))
-              (when (and (notany #'variablep parameters)
-                         (every #'variablep (sub free-variables bindings)))
-                (apply function
+      (multiple-value-bind (matched bindings)
+          (unify goal (predicate-head predicate))
+        (when matched
+          (loop
+             for (bound-variables free-variables function) in (predicate-patterns predicate)
+             for parameters = (sub bound-variables bindings)
+             when (notany #'variablep parameters)
+             do (apply function
                        (lambda (bindings*)
-                         (let ((bindings (append bindings* bindings)))
-                           (exec (sub goals bindings)
-                                 (sub term bindings))))
-                       parameters)))))))
+                         (let ((term-1 (sub free-variables bindings))
+                               (term-2 (sub free-variables bindings*)))
+                           (multiple-value-bind (matched bindings**)
+                               (unify term-1 term-2)
+                             (when matched
+                               (let ((bindings (append bindings bindings**)))
+                                 (exec (sub goals bindings)
+                                       (sub term bindings)))))))
+                       parameters)
+               (return)))))
 
     (do-clause (clause)
       (multiple-value-bind (matched bindings) (unify goal (car clause))
