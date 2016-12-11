@@ -17,15 +17,14 @@
 
 (with-world ()
 
-  (%g (parse-integer ?string ?integer)
-      (?string)
-    (and (stringp ?string)
-         (ppcre:scan "\\d+" ?string)
-         (ret :?integer (parse-integer ?string))))
-  (%g (parse-integer ?string ?integer)
-      (?integer)
-    (and (integerp ?integer)
-         (ret :?string (write-to-string ?integer))))
+  (%- (parse-integer ?string ?integer)
+      ((?string)
+       (and (stringp ?string)
+            (ppcre:scan "\\d+" ?string)
+            (satisfy :?integer (parse-integer ?string))))
+      ((?integer)
+       (and (integerp ?integer)
+            (satisfy :?string (write-to-string ?integer)))))
 
   ;; member
   (<- (member ?x (?x . ?)))

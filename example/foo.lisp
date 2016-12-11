@@ -3,6 +3,7 @@
 
 (use-package :preil)
 
+
 (with-world ()
   (<- (人間 ソクラテス))
   (<- (人間 アリストテレス))

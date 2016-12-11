@@ -5,8 +5,10 @@
 
 (print 1)
 (with-world ()
-  (%p (add ?x ?y ?z)
-    (= (+ ?x ?y) ?z))
+  (%- (add ?x ?y ?z)
+      ((?x ?y ?z)
+       (when (= (+ ?x ?y) ?z)
+         (satisfy))))
 
   (print (solvep
            '(add 1 2 3)))
@@ -21,9 +23,9 @@
 
 (print 2)
 (with-world ()
-  (%g (add ?x ?y ?z)
-      (?x ?y)
-    (ret :?z (+ ?x ?y)))
+  (%- (add ?x ?y ?z)
+      ((?x ?y)
+       (satisfy :?z (+ ?x ?y))))
 
   (print (solvep
            '(add 1 2 3)))
@@ -38,12 +40,12 @@
 
 (print 3)
 (with-world ()
-  (%p (add ?x ?y ?z)
-    (= (+ ?x ?y) ?z))
-
-  (%g (add ?x ?y ?z)
-      (?x ?y)
-      (ret :?z (+ ?x ?y)))
+  (%- (add ?x ?y ?z)
+      ((?x ?y ?z)
+       (when (= (+ ?x ?y) ?z)
+         (satisfy)))
+      ((?x ?y)
+       (satisfy :?z (+ ?x ?y))))
 
   (print (solvep
            '(add 1 2 3)))
@@ -56,35 +58,33 @@
   (print (solve-all ?z
            '(add 1 2 ?z))))
 
-(print 3)
+(print 4)
 (with-world ()
-  (%g (range ?x ?y)
-      (?x)
-      (dotimes (i ?x)
-        (ret :?y i)))
+  (%- (range ?x ?y)
+      ((?x)
+       (dotimes (i ?x)
+         (satisfy :?y i))))
 
   (print (solve-all ?x
            '(range 10 ?x))))
 
-(print 4)
+(print 5)
 (with-world ()
-  (%g (eval ?exp ?val)
-      (?exp)
-      (ret :?val (eval ?exp)))
+  (%- (eval ?exp ?val)
+      ((?exp)
+       (satisfy :?val (eval ?exp))))
 
   (print (solve-all ?x
            '(eval (+ 1 (* 2 3)) ?x))))
 
 
-(print 5)
+(print 6)
 '(with-world ()
-  (%g (1+ ?n ?m)
-      (?n)
-    (ret :?m (1+ ?n)))
-
-  (%g (1+ ?n ?m)
-      (?m)
-    (ret :?n (1- ?m)))
+  (%- (1+ ?n ?m)
+   ((?n)
+    (satisfy :?m (1+ ?n)))
+   ((?m)
+    (satisfy :?n (1- ?m))))
 
   ;; list-len
   (<- (list-len () 0))
