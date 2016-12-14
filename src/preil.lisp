@@ -216,7 +216,8 @@
                 (sub term bindings)))))))
 
 (defun solve (term goals *resolved-function*)
-  (exec (sub goals '()) term))
+  (exec (sub goals '()) term)
+  nil)
 
 
 (defmacro with-world ((&optional (world '(make-world :parent *world*))) &body body)
@@ -233,16 +234,11 @@
 (defmacro <- (head &body body)
   `(add-clause ',head ',body))
 
-(define-condition solve-1-end (simple-error)
-  ((result :initarg :result)))
-
 (defmacro solve-1 (term &body clauses)
-  `(handler-case
-       (solve ',term (list ,@clauses)
-              (lambda (result)
-                (error 'solve-1-end :result result)))
-     (solve-1-end (c)
-       (slot-value c 'result))))
+  `(block solve-1
+     (solve ',term (list ,@clauses)
+            (lambda (result)
+              (return-from solve-1 result)))))
 
 (defmacro solvep (&body clauses)
   `(solve-1 t ,@clauses))
