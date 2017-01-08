@@ -7,6 +7,8 @@
            #:solve
            #:<-
            #:solvep
+           #:%solve-1
+           #:%solve-all
            #:solve-1
            #:solve-all
            #:do-solve
@@ -33,7 +35,21 @@
 (defun eq* (l r)
 	(if (stringp l)
 			(and (stringp r) (string= l r))
-		(eq l r)))
+      (eq l r)))
+
+(defun variablep (object)
+  (and (symbolp object)
+       (string= object "?" :end1 1 :end2 1)))
+
+(defun contains-variable-p (term)
+  (labels ((f (term)
+             (cond
+               ((variablep term)
+                t)
+               ((consp term)
+                (or (f (car term))
+                    (f (cdr term)))))))
+    (f term)))
 
 (defun collect-variables (term)
   (let ((variables nil))
@@ -76,6 +92,7 @@
 (defun cleanse-term (term)
   (sub term
        (variables-cleanse-bindings (collect-variables term))))
+
 
 (defun add-clause (head body)
   (setf (world-clauses *world*)
@@ -133,10 +150,6 @@
            ,@body)
         (setf ,world (world-parent ,world)))))
 
-(defun variablep (object)
-  (and (symbolp object)
-       (string= object "?" :end1 1 :end2 1)))
-
 (defun unified-value (term)
   (if (variablep term)
       (let ((pair (assoc term *unified*)))
@@ -147,8 +160,16 @@
 
 (defun %unify (term1 term2)
   '(format t "~a ~a~%" term1 term2)
-  (setf term1 (unified-value term1)
-        term2 (unified-value term2))
+
+  (labels ((unified-value (term)
+             (if (variablep term)
+                 (let ((pair (assoc term *unified*)))
+                   (if pair
+                       (unified-value (cdr pair))
+                       term))
+                 term)))
+    (setf term1 (unified-value term1)
+          term2 (unified-value term2)))
 
   (cond
     ((eq* term1 term2)
@@ -182,7 +203,7 @@
           (loop
              for (bound-variables free-variables function) in (predicate-patterns predicate)
              for parameters = (sub bound-variables bindings)
-             when (notany #'variablep parameters)
+             when (notany #'contains-variable-p parameters)
              do (apply function
                        (lambda (bindings*)
                          (let ((term-1 (sub free-variables bindings))
@@ -234,26 +255,32 @@
 (defmacro <- (head &body body)
   `(add-clause ',head ',body))
 
-(defmacro solve-1 (term &body clauses)
-  `(block solve-1
-     (solve ',term (list ,@clauses)
+
+(defun %solve-1 (term clauses)
+  (block solve-1
+     (solve term clauses
             (lambda (result)
               (return-from solve-1 result)))))
 
+(defmacro solve-1 (term &body clauses)
+  `(%solve-1 ',term (list ,@clauses)))
+
 (defmacro solvep (&body clauses)
-  `(solve-1 t ,@clauses))
+  `(%solve-1 t (list ,@clauses)))
 
 (defmacro do-solve ((variables &body body) &rest clauses)
   (let ((arguments (gensym "ARGUMENTS")))
   `(solve ',variables (list ,@clauses)
           (lambda (,arguments)
             (destructuring-bind ,variables ,arguments
-             ,@body)))))
+              ,@body)))))
+
+(defun %solve-all (term clauses)
+  (let ((result nil))
+    (solve term clauses
+           (lambda (term)
+             (push term result)))
+    (nreverse result)))
 
 (defmacro solve-all (term &body clauses)
-  (let ((result (gensym)))
-    `(let ((,result nil))
-       (solve ',term (list ,@clauses)
-              (lambda (term)
-                (push term ,result)))
-       (nreverse ,result))))
+  `(%solve-all ',term (list ,@clauses)))

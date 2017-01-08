@@ -9,6 +9,21 @@
 
 (plan nil)
 
-;; blah blah blah.
+(with-world ()
+
+  (preil-prelude:import-definition)
+
+  (is (solve-all ?x '(append (1 2) (3 4) ?x))
+      '((1 2 3 4))
+      :test #'equal)
+
+  (is (solve-all ?x '(format ?x "~a-~b" a 1))
+      '("A-1")
+      :test #'equal)
+
+  (is (solve-1 ?x '(prelude:find-all ?x (x y) (append x y (1 2 3))))
+      '((() (1 2 3)) ((1) (2 3)) ((1 2) (3)) ((1 2 3) ()))
+      :test #'equal)
+  )
 
 (finalize)

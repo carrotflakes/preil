@@ -12,6 +12,7 @@
   :author "carrotflakes"
   :license "LLGPL"
   :depends-on (:preil
+               :preil-prelude
                :prove)
   :components ((:module "t"
                 :components
