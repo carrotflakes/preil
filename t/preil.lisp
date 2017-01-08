@@ -21,6 +21,14 @@
       '("A-1")
       :test #'equal)
 
+  (is (solvep '(< 1 2))
+      t
+      :test #'equal)
+
+  (is (solve-1 ?x '(prelude:find-1 (?x) (x) (member x (1 2 3))))
+      '1
+      :test #'equal)
+
   (is (solve-1 ?x '(prelude:find-all ?x (x y) (append x y (1 2 3))))
       '((() (1 2 3)) ((1) (2 3)) ((1 2) (3)) ((1 2 3) ()))
       :test #'equal)

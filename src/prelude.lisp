@@ -3,9 +3,25 @@
   (:nicknames :prelude)
   (:use :cl :preil)
   (:export #:import-definition
+           #:=
+           #:member
+           #:append
+           #:reverse
            #:conc
            #:conc*
-           #:find-all))
+           #:and
+           #:or
+           #:eval
+           #:print
+           #:format
+           #:find-1
+           #:find-all
+           #:not
+           #:<
+           #:<=
+           #:>
+           #:>=
+           #:integerp))
 (in-package :preil-prelude)
 
 
@@ -68,19 +84,37 @@
     (and . ?xs))
 
 
+  (%- (eval ?result ?form)
+    ((?form)
+     (satisfy :?result (eval ?form))))
+
   (%- (format ?out ?form . ?rest)
       ((?form ?rest)
        (satisfy :?out (apply #'format nil ?form ?rest))))
 
-  (%- (print ?value)
-      ((?value)
-       (format t "~a~%" ?value)
+  (%- (print . ?values)
+      ((?values)
+       (format t "~{~a~^ ~}~%" ?values)
        (satisfy)))
 
   (%- (not ?term)
     ((?term)
      (unless (solvep ?term)
        (satisfy))))
+
+  (%- (find-1 ?result ?var-syms ?term)
+    ((?var-syms ?term)
+     (and (listp ?var-syms)
+          (every #'symbolp ?var-syms)
+          (let* ((variables (mapcar (lambda (symbol)
+                                      (gensym (format nil "?~a"
+                                                      (symbol-name symbol))))
+                                    ?var-syms))
+                 (clause (sub ?term (mapcar #'cons ?var-syms variables))))
+            (multiple-value-bind (result succeeded)
+                (preil:%solve-1 variables (list clause))
+              (when succeeded
+                (satisfy :?result result)))))))
 
   ;; e.g.
   ;; (solve-all ?result '(find-all ?result (x y) (append x y (1 2 3))))
@@ -95,4 +129,26 @@
                                     ?var-syms))
                  (clause (sub ?term (mapcar #'cons ?var-syms variables))))
             (satisfy :?result (preil:%solve-all variables (list clause)))))))
+
+  (%- (< . ?xs)
+    ((?xs)
+     (when (apply #'< ?xs)
+       (satisfy))))
+  (%- (<= . ?xs)
+    ((?xs)
+     (when (apply #'<= ?xs)
+       (satisfy))))
+  (%- (> . ?xs)
+    ((?xs)
+     (when (apply #'> ?xs)
+       (satisfy))))
+  (%- (>= . ?xs)
+    ((?xs)
+     (when (apply #'>= ?xs)
+       (satisfy))))
+
+  (%- (integerp ?value)
+      ((?value)
+       (when (integerp ?value)
+         (satisfy))))
 )

@@ -260,7 +260,7 @@
   (block solve-1
      (solve term clauses
             (lambda (result)
-              (return-from solve-1 result)))))
+              (return-from solve-1 (values result t))))))
 
 (defmacro solve-1 (term &body clauses)
   `(%solve-1 ',term (list ,@clauses)))
