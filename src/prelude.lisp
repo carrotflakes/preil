@@ -1,5 +1,5 @@
 (in-package :cl-user)
-(defpackage preil-prelude
+(defpackage preil.prelude
   (:nicknames :prelude)
   (:use :cl :preil)
   (:export #:import-definition
@@ -22,7 +22,7 @@
            #:>
            #:>=
            #:integerp))
-(in-package :preil-prelude)
+(in-package :preil.prelude)
 
 
 (defun sub (term bindings)

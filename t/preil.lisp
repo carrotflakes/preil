@@ -11,7 +11,7 @@
 
 (with-world ()
 
-  (preil-prelude:import-definition)
+  (prelude:import-definition)
 
   (is (solve-all ?x '(append (1 2) (3 4) ?x))
       '((1 2 3 4))
