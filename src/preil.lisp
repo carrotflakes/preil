@@ -237,6 +237,8 @@
                 (sub term bindings)))))))
 
 (defun solve (term goals *resolved-function*)
+  (unless *world*
+    (error "Out of world"))
   (exec (sub goals '()) term)
   nil)
 
