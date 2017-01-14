@@ -98,7 +98,7 @@
                            for variable in (collect-variables (cdr clause))
                            unless (assoc variable bindings)
                            collect (cons variable
-                                         (if (string= variable +variable-char+)
+                                         (if (string= variable *variable-prefix*)
                                              variable
                                              (gensym (symbol-name variable)))))))
           (exec (append (sub (cdr clause)
