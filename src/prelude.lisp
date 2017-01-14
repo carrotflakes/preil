@@ -11,6 +11,7 @@
            #:conc*
            #:and
            #:or
+           #:if
            #:eval
            #:print
            #:format
@@ -21,7 +22,10 @@
            #:<=
            #:>
            #:>=
-           #:integerp))
+           #:inc
+           #:numberp
+           #:integerp
+           #:symbolp))
 (in-package :preil.prelude)
 
 
@@ -83,6 +87,12 @@
     ?x
     (and . ?xs))
 
+  (<- (if ?cond ?then ?else)
+      (or (and ?cond
+               ?then)
+          (and (not ?cond)
+               ?else)))
+
 
   (%- (eval ?result ?form)
     ((?form)
@@ -130,25 +140,43 @@
                  (clause (sub ?term (mapcar #'cons ?var-syms variables))))
             (satisfy :?result (preil:%solve-all variables (list clause)))))))
 
+  (%- (inc ?x ?y)
+    ((?x)
+     (when (integerp ?x)
+       (satisfy :?y (1+ ?x))))
+    ((?y)
+     (when (integerp ?y)
+       (satisfy :?x (1- ?y)))))
+
   (%- (< . ?xs)
     ((?xs)
-     (when (apply #'< ?xs)
+     (when (and (every #'numberp ?xs) (apply #'< ?xs))
        (satisfy))))
   (%- (<= . ?xs)
     ((?xs)
-     (when (apply #'<= ?xs)
+     (when (and (every #'numberp ?xs) (apply #'<= ?xs))
        (satisfy))))
   (%- (> . ?xs)
     ((?xs)
-     (when (apply #'> ?xs)
+     (when (and (every #'numberp ?xs) (apply #'> ?xs))
        (satisfy))))
   (%- (>= . ?xs)
     ((?xs)
-     (when (apply #'>= ?xs)
+     (when (and (every #'numberp ?xs) (apply #'>= ?xs))
        (satisfy))))
+
+  (%- (numberp ?value)
+      ((?value)
+       (when (numberp ?value)
+         (satisfy))))
 
   (%- (integerp ?value)
       ((?value)
        (when (integerp ?value)
+         (satisfy))))
+
+  (%- (symbolp ?value)
+      ((?value)
+       (when (symbolp ?value)
          (satisfy))))
 )
