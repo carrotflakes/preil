@@ -18,6 +18,8 @@
 (in-package :preil)
 
 
+(defconstant +variable-char+ "?")
+
 (defvar *world* nil)
 (defvar *unified* nil)
 (defvar *resolved-function* nil)
@@ -32,14 +34,16 @@
   head
   patterns) ; A list of (bound-variables free-variables function)
 
+(declaim (inline eq*))
 (defun eq* (l r)
 	(if (stringp l)
 			(and (stringp r) (string= l r))
       (eq l r)))
 
+(declaim (inline variablep))
 (defun variablep (object)
   (and (symbolp object)
-       (string= object "?" :end1 1 :end2 1)))
+       (string= object +variable-char+ :end1 1 :end2 1)))
 
 (defun contains-variable-p (term)
   (labels ((f (term)
@@ -67,12 +71,12 @@
 (defun sub (term bindings)
   (cond
     ((variablep term)
-     (if (string/= term "?")
+     (if (string/= term +variable-char+)
          (let ((pair (assoc term bindings)))
            (if pair
                (sub (cdr pair) bindings)
                term))
-         (gensym "?")))
+         (gensym +variable-char+)))
     ((consp term)
      (let ((car (sub (car term) bindings))
            (cdr (sub (cdr term) bindings)))
@@ -86,7 +90,7 @@
 (defun variables-cleanse-bindings (variables)
   (loop
      for variable in variables
-     when (string/= variable "?")
+     when (string/= variable +variable-char+)
      collect (cons variable (gensym (symbol-name variable)))))
 
 (defun cleanse-term (term)
@@ -159,6 +163,7 @@
       term))
 
 (defun %unify (term1 term2)
+  (declare (optimize (speed 3) (safety 0) (space 0) (debug 0)))
   '(format t "~a ~a~%" term1 term2)
 
   (labels ((unified-value (term)
@@ -175,11 +180,11 @@
     ((eq* term1 term2)
      t)
     ((variablep term1)
-     (when (string= term1 "?") (return-from %unify t))
+     (when (string= term1 +variable-char+) (return-from %unify t))
      (push (cons term1 term2) *unified*)
      t)
     ((variablep term2)
-     (when (string= term2 "?") (return-from %unify t))
+     (when (string= term2 +variable-char+) (return-from %unify t))
      (push (cons term2 term1) *unified*)
      t)
     ((and (consp term1) (consp term2))
@@ -227,7 +232,7 @@
                            for variable in (collect-variables (cdr clause))
                            unless (assoc variable bindings)
                            collect (cons variable
-                                         (if (string= variable "?")
+                                         (if (string= variable +variable-char+)
                                              variable
                                              (gensym (symbol-name variable)))))))
           (exec (append (sub (cdr clause)
