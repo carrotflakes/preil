@@ -19,7 +19,9 @@
   :depends-on ()
   :components ((:module "src"
                 :components
-                ((:file "preil"))))
+                ((:file "util")
+                 (:file "core" :depends-on ("util"))
+                 (:file "preil" :depends-on ("core")))))
   :description "A logic programming library for Common Lisp"
   :long-description
   #.(with-open-file (stream (merge-pathnames
