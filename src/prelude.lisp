@@ -25,7 +25,8 @@
            #:inc
            #:numberp
            #:integerp
-           #:symbolp))
+           #:symbolp
+           #:string-chars))
 (in-package :preil.prelude)
 
 
@@ -179,4 +180,12 @@
       ((?value)
        (when (symbolp ?value)
          (satisfy))))
+
+  (%- (string-chars ?string ?chars)
+      ((?string)
+       (when (stringp ?string)
+         (satisfy :?chars (coerce ?string 'list))))
+      ((?chars)
+       (when (and (listp ?chars) (every #'characterp ?chars))
+         (satisfy :?string (coerce ?chars 'string)))))
 )
