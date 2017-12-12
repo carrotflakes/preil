@@ -95,7 +95,7 @@
           (setf bindings
                 (append bindings
                         (loop
-                           for variable in (collect-variables (cdr clause))
+                           for variable in (collect-variables clause)
                            unless (assoc variable bindings)
                            collect (cons variable
                                          (if (string= variable *variable-prefix*)
