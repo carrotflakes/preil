@@ -29,13 +29,26 @@ A prolog-like logic programming library for Common Lisp.
 $ ros install carrotflakes/preil
 ```
 
+## APIs
+- `*world*`
+- `make-world`
+- `with-world`
+- `<-`
+- `%-`
+- `solve`
+- `solvep`
+- `solve-1`
+- `solve-all`
+- `do-solve`
+- `preil-defun`
+
 ## Author
 
 * carrotflakes (carrotflakes@gmail.com)
 
 ## Copyright
 
-Copyright (c) 2016 carrotflakes (carrotflakes@gmail.com)
+Copyright (c) 2016-2017 carrotflakes (carrotflakes@gmail.com)
 
 ## License
 
