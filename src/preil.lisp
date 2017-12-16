@@ -20,7 +20,7 @@
 (in-package :preil)
 
 
-(defmacro with-world ((&optional (world '(make-world :parent *world*))) &body body)
+(defmacro with-world ((&optional (world '(make-world))) &body body)
   `(let ((*world* ,world))
      ,@body))
 

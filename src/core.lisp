@@ -20,8 +20,7 @@
 
 (defstruct world
   (clauses nil)
-  (predicates nil)
-  (parent nil))
+  (predicates nil))
 
 (defstruct predicate
   head
@@ -41,25 +40,6 @@
                   (list predicate)))))
 
 
-(defmacro do-clause ((clause) &body body)
-  (let ((world (gensym)))
-  `(loop
-      with ,world = *world*
-      while ,world
-      do (dolist (,clause (world-clauses ,world))
-           ,@body)
-        (setf ,world (world-parent ,world)))))
-
-(defmacro do-predicate ((predicate) &body body)
-  (let ((world (gensym)))
-  `(loop
-      with ,world = *world*
-      while ,world
-      do (dolist (,predicate (world-predicates ,world))
-           ,@body)
-        (setf ,world (world-parent ,world)))))
-
-
 (defun exec (goals term)
   (when (null goals)
     (when *resolved-function*
@@ -67,7 +47,7 @@
 
   (let ((goal (pop goals)))
 
-    (do-predicate (predicate)
+    (dolist (predicate (world-predicates *world*))
       (multiple-value-bind (matched bindings)
           (unify goal (predicate-head predicate))
         (when matched
@@ -88,7 +68,7 @@
                        parameters)
                (return)))))
 
-    (do-clause (clause)
+    (dolist (clause (world-clauses *world*))
       (multiple-value-bind (matched bindings) (unify goal (car clause))
         (when matched
           '(format t "!~a~%~a~%~a~%~a~%~%" term goal clause bindings)
