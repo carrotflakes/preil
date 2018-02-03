@@ -38,18 +38,17 @@
                     (f (cdr term)))))))
     (f term)))
 
-(defun collect-variables (term)
-  (let ((variables nil))
-    (labels ((f (term)
-               (cond
-                 ((and (variablep term)
-                       (not (member term variables)))
-                  (push term variables))
-                 ((consp term)
-                  (f (car term))
-                  (f (cdr term))))))
-      (f term))
-    variables))
+(defun collect-variables (term &optional variables)
+  (labels ((f (term)
+             (cond
+               ((and (variablep term)
+                  (not (member term variables)))
+                 (push term variables))
+               ((consp term)
+                 (f (car term))
+                 (f (cdr term))))))
+    (f term))
+  variables)
 
 (defun sub (term bindings)
   (cond
@@ -81,39 +80,41 @@
        (variables-cleanse-bindings (collect-variables term))))
 
 
-
-(defvar *unified* nil)
-
-
-(defun unified-value (term)
+(declaim (inline unified-value))
+(defun unified-value (unified term)
+  (declare (optimize (speed 3) (safety 0) (space 0) (debug 0)))
   (loop
      while (variablep term)
-     for pair = (assoc term *unified*)
+     for pair = (assoc term unified)
      while pair
      do (setf term (cdr pair)))
   term)
 
-(defun %unify (term1 term2)
+(defun %unify (unified term1 term2)
   (declare (optimize (speed 3) (safety 0) (space 0) (debug 0)))
   '(format t "~a ~a~%" term1 term2)
 
-  (setf term1 (unified-value term1)
-        term2 (unified-value term2))
+  (setf term1 (unified-value unified term1)
+        term2 (unified-value unified term2))
 
   (cond
     ((eq* term1 term2)
-     t)
+     unified)
     ((variablep term1)
-     (unless (string= term1 *variable-prefix*)
-       (push (cons term1 term2) *unified*))
-     t)
+     (if (string= term1 *variable-prefix*)
+         unified
+         (cons (cons term1 term2) unified)))
     ((variablep term2)
-     (unless (string= term2 *variable-prefix*)
-       (push (cons term2 term1) *unified*))
-     t)
+     (if (string= term2 *variable-prefix*)
+         unified
+         (cons (cons term2 term1) unified)))
     ((and (consp term1) (consp term2))
-     (and (%unify (car term1) (car term2))
-          (%unify (cdr term1) (cdr term2))))))
+     (let ((unified (%unify unified (car term1) (car term2))))
+       (if (eq unified t)
+           t
+         (%unify unified (cdr term1) (cdr term2)))))
+    (t t)))
 
-(defun unify (term1 term2 &aux (*unified* ()))
-  (values (%unify term1 term2) *unified*))
+(defun unify (term1 term2)
+  (let ((unified (%unify '() term1 term2)))
+    (values (not (eq unified t)) unified)))
