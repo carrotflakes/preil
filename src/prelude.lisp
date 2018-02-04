@@ -2,7 +2,7 @@
 (defpackage preil.prelude
   (:nicknames :prelude)
   (:use :cl :preil)
-  (:export #:import-definition
+  (:export #:get-world
            #:=
            #:member
            #:append
@@ -47,8 +47,8 @@
     (t
      term)))
 
-(defun import-definition (&optional (*world* *world*))
-
+(defun get-world ()
+  (create-world
   (<- (= ?x ?x))
 
   (<- (member ?x (?x . ?)))
@@ -188,4 +188,4 @@
       ((?chars)
        (when (and (listp ?chars) (every #'characterp ?chars))
          (satisfy :?string (coerce ?chars 'string)))))
-)
+))

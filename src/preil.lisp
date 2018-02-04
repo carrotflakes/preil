@@ -3,11 +3,10 @@
   (:use :cl
         :preil.util
         :preil.core)
-  (:export #:*world*
-           #:make-world
-           #:with-world
+  (:export #:create-world
            #:<-
            #:%-
+           #:import-world
            #:solve
            #:solvep
            #:%solve-1
@@ -15,75 +14,49 @@
            #:solve-1
            #:solve-all
            #:do-solve
-           #:satisfy
-           #:preil-defun))
+           #:satisfy))
 (in-package :preil)
 
 
-(defmacro with-world ((&optional (world '(make-world))) &body body)
-  `(let ((*world* ,world))
-     ,@body))
-
-(defmacro preil-defun (name args &body body)
+(defmacro create-world (&body body)
   (let ((world (gensym "WORLD")))
-    `(let ((,world *world*))
-       (defun ,name ,args
-         (let ((*world* ,world))
-           ,@body)))))
-
-(defmacro <- (head &body body)
-  `(add-clause ',head ',body))
-
-(defmacro %- (head &body patterns)
-  (let* ((head-variables (collect-variables head))
-         (bindings (variables-cleanse-bindings head-variables))
-         (cleansed-head (sub head bindings)))
-    `(add-predicate
-      ',cleansed-head
-      (list ,@(loop
-                 for (bound-variables . body) in patterns
-                 for free-variables = (set-difference head-variables bound-variables)
-                 for satisfy-macro = `(satisfy (&key ,@free-variables)
-                                               (list 'funcall '%satisfy
-                                                     (list 'list
-                                                           ,@(loop
-                                                                for variable in free-variables
-                                                                collect `(list 'cons
-                                                                               '',(sub variable bindings)
-                                                                               ,variable)))))
-                 collect `(list
-                           ',(sub bound-variables bindings)
-                           ',(sub free-variables bindings)
-                           (lambda (%satisfy ,@bound-variables)
-                             (macrolet (,satisfy-macro)
-                               ,@body))))))))
+    `(let ((,world (make-world)))
+       (macrolet
+         ((<- (head &body body)
+            (list 'add-clause ',world `',head `',body))
+          (%- (head &body patterns)
+            (list 'add-predicate ',world `',head `',patterns))
+          (import-world (package)
+            (list 'merge-world ',world `(funcall (intern "GET-WORLD" ,package)))))
+         ,@body)
+       ,world)))
 
 
-(defun %solve-1 (term clauses)
+(defun %solve-1 (world term clauses)
   (block solve-1
-     (solve term clauses
+     (solve world term clauses
             (lambda (result)
               (return-from solve-1 (values result t))))))
 
-(defmacro solve-1 (term &body clauses)
-  `(%solve-1 ',term (list ,@clauses)))
+(defmacro solve-1 (world term &body clauses)
+  `(%solve-1 ,world ',term (list ,@clauses)))
 
-(defmacro solvep (&body clauses)
-  `(%solve-1 t (list ,@clauses)))
+(defmacro solvep (world &body clauses)
+  `(%solve-1 ,world t (list ,@clauses)))
 
-(defmacro do-solve ((variables &body body) &rest clauses)
+(defmacro do-solve (world (variables &body body) &rest clauses)
   (let ((arguments (gensym "ARGUMENTS")))
-  `(solve ',variables (list ,@clauses)
+  `(solve ,world ',variables (list ,@clauses)
           (lambda (,arguments)
             (destructuring-bind ,variables ,arguments
               ,@body)))))
 
-(defun %solve-all (term clauses)
+(defun %solve-all (world term clauses)
   (let ((result nil))
-    (solve term clauses
+    (solve world term clauses
            (lambda (term)
              (push term result)))
     (nreverse result)))
 
-(defmacro solve-all (term &body clauses)
-  `(%solve-all ',term (list ,@clauses)))
+(defmacro solve-all (world term &body clauses)
+  `(%solve-all ,world ',term (list ,@clauses)))

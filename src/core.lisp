@@ -2,17 +2,16 @@
 (defpackage preil.core
   (:use :cl
         :preil.util)
-  (:export #:*world*
-           #:make-world
-           #:do-clause
-           #:do-predicate
+  (:export #:make-world
            #:add-clause
            #:add-predicate
+           #:merge-world
            #:solve
            #:satisfy
            #:exec
            #:solve))
 (in-package :preil.core)
+
 
 (defvar *world* nil)
 (defvar *resolved-function* nil)
@@ -27,17 +26,49 @@
   patterns) ; A list of (bound-variables free-variables function)
 
 
-(defun add-clause (head body)
-  (setf (world-clauses *world*)
-        (append (world-clauses *world*)
-                (list (cleanse-term (cons head body))))))
+(defun add-clause (world head body)
+  (setf (world-clauses world)
+        (append (world-clauses world)
+          (list (cleanse-term (cons head body))))))
 
-(defun add-predicate (head patterns)
-  (let ((predicate (make-predicate :head head
-                                   :patterns patterns)))
-    (setf (world-predicates *world*)
-          (append (world-predicates *world*)
-                  (list predicate)))))
+(defun add-predicate (world head patterns)
+  (let* ((head-variables (collect-variables head))
+         (bindings (variables-cleanse-bindings head-variables))
+         (cleansed-head (sub head bindings))
+         (cleansed-patterns
+          (mapcar
+            #'(lambda (pattern)
+                (destructuring-bind (bound-variables . body) pattern
+                  (let* ((free-variables (set-difference head-variables bound-variables))
+                         (satisfy-macro-definition
+                          `(satisfy (&key ,@free-variables)
+                             (list 'funcall '%satisfy
+                                   (list 'list
+                                         ,@(loop
+                                             for variable in free-variables
+                                             collect `(list 'cons
+                                                            '',(sub variable bindings)
+                                                        ,variable)))))))
+                    (list
+                      (sub bound-variables bindings)
+                      (sub free-variables bindings)
+                      (eval `(lambda (%satisfy ,@bound-variables)
+                               (macrolet (,satisfy-macro-definition)
+                                 ,@body)))))))
+            patterns))
+         (predicate (make-predicate :head cleansed-head
+                                    :patterns cleansed-patterns)))
+    (setf (world-predicates world)
+          (append (world-predicates world)
+            (list predicate)))))
+
+(defun merge-world (world inner-world)
+  (setf (world-clauses world)
+        (append (world-clauses world)
+                (world-clauses inner-world))
+        (world-predicates world)
+        (append (world-predicates world)
+                (world-predicates inner-world))))
 
 
 (defun exec (goals term)
@@ -87,8 +118,6 @@
                              bindings))
                 (sub term bindings)))))))
 
-(defun solve (term goals *resolved-function*)
-  (unless *world*
-    (error "Out of world"))
+(defun solve (*world* term goals *resolved-function*)
   (exec (sub goals '()) term)
   nil)
