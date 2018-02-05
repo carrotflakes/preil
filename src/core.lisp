@@ -84,18 +84,18 @@
         (when matched
           (loop
              for (bound-variables free-variables function) in (predicate-patterns predicate)
-             for parameters = (sub bound-variables bindings)
-             when (notany #'contains-variable-p parameters)
+             for parameters = (ssub bound-variables bindings)
+             when (notany #'contains-svar-p parameters)
              do (apply function
                        (lambda (bindings*)
-                         (let ((term-1 (sub free-variables bindings))
-                               (term-2 (sub free-variables bindings*)))
+                         (let ((term-1 (ssub free-variables bindings))
+                               (term-2 (ssub free-variables bindings*)))
                            (multiple-value-bind (matched bindings**)
                                (unify term-1 term-2)
                              (when matched
                                (let ((bindings (append bindings bindings**)))
-                                 (exec (sub goals bindings)
-                                       (sub term bindings)))))))
+                                 (exec (ssub goals bindings)
+                                       (ssub term bindings)))))))
                        parameters)
                (return)))))
 
@@ -106,18 +106,16 @@
           (setf bindings
                 (append bindings
                         (loop
-                           for variable in (collect-variables clause)
-                           unless (assoc variable bindings)
-                           collect (cons variable
-                                         (if (string= variable *variable-prefix*)
-                                             variable
-                                             (gensym (symbol-name variable)))))))
-          (exec (append (sub (cdr clause)
-                             bindings)
-                        (sub goals
-                             bindings))
-                (sub term bindings)))))))
+                           for svar in (collect-svars clause)
+                           unless (assoc svar bindings)
+                           collect (cons svar (make-svar :name (svar-name svar))))))
+          (exec (append (ssub (cdr clause)
+                              bindings)
+                        (ssub goals
+                              bindings))
+                (ssub term bindings)))))))
 
 (defun solve (*world* term goals *resolved-function*)
-  (exec (sub goals '()) term)
+  (destructuring-bind (goals . term) (cleanse-term (cons goals term))
+    (exec goals term))
   nil)

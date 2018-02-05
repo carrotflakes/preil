@@ -2,11 +2,16 @@
 (defpackage preil.util
   (:use :cl)
   (:export #:*variable-prefix*
+           #:make-svar
+           #:svar-name
+           #:svar-p
            #:eq*
            #:variablep
-           #:contains-variable-p
+           #:contains-svar-p
            #:collect-variables
+           #:collect-svars
            #:sub
+           #:ssub
            #:variables-cleanse-bindings
            #:cleanse-term
            #:unify))
@@ -15,6 +20,15 @@
 
 (declaim (inline *variable-prefix*))
 (defvar *variable-prefix* "?")
+
+
+(defstruct svar
+  name)
+
+(defmethod print-object ((obj svar) out)
+  #+sbcl(format out "#~a~a" (svar-name obj)
+          (mod (sb-kernel:get-lisp-obj-address obj) 10000))
+  #-sbcl(format out "#~a" (svar-name obj)))
 
 
 (declaim (inline eq*))
@@ -28,10 +42,14 @@
   (and (symbolp object)
        (string= object *variable-prefix* :end1 1 :end2 1)))
 
-(defun contains-variable-p (term)
+;; (declaim (inline wildcard-p))
+;; (defun wildcard-p (svar)
+;;   (string= *variable-prefix* (svar-name svar)))
+
+(defun contains-svar-p (term)
   (labels ((f (term)
              (cond
-               ((variablep term)
+               ((svar-p term)
                 t)
                ((consp term)
                 (or (f (car term))
@@ -42,26 +60,55 @@
   (labels ((f (term)
              (cond
                ((and (variablep term)
-                  (not (member term variables)))
-                 (push term variables))
+                     (not (member term variables)))
+                (push term variables))
                ((consp term)
-                 (f (car term))
-                 (f (cdr term))))))
+                (f (car term))
+                (f (cdr term))))))
     (f term))
   variables)
+
+(defun collect-svars (term &optional svars)
+  (labels ((f (term)
+             (cond
+               ((and (svar-p term)
+                     (not (member term svars)))
+                (push term svars))
+               ((consp term)
+                (f (car term))
+                (f (cdr term))))))
+    (f term))
+  svars)
 
 (defun sub (term bindings)
   (cond
     ((variablep term)
-     (if (string/= term *variable-prefix*)
+     (if (string= term *variable-prefix*)
+         (make-svar :name "!");*variable-prefix*)
          (let ((pair (assoc term bindings)))
            (if pair
                (sub (cdr pair) bindings)
-               term))
-         (gensym *variable-prefix*)))
+               term))))
     ((consp term)
      (let ((car (sub (car term) bindings))
            (cdr (sub (cdr term) bindings)))
+       (if (and (eq* car (car term))
+                (eq* cdr (cdr term)))
+           term
+           (cons car cdr))))
+    (t
+     term)))
+
+(defun ssub (term bindings)
+  (cond
+    ((svar-p term)
+      (let ((pair (assoc term bindings)))
+        (if pair
+            (ssub (cdr pair) bindings)
+            term)))
+    ((consp term)
+     (let ((car (ssub (car term) bindings))
+           (cdr (ssub (cdr term) bindings)))
        (if (and (eq* car (car term))
                 (eq* cdr (cdr term)))
            term
@@ -73,7 +120,7 @@
   (loop
      for variable in variables
      when (string/= variable *variable-prefix*)
-     collect (cons variable (gensym (symbol-name variable)))))
+     collect (cons variable (make-svar :name (symbol-name variable)))))
 
 (defun cleanse-term (term)
   (sub term
@@ -84,7 +131,7 @@
 (defun unified-value (unified term)
   (declare (optimize (speed 3) (safety 0) (space 0) (debug 0)))
   (loop
-     while (variablep term)
+     while (svar-p term)
      for pair = (assoc term unified)
      while pair
      do (setf term (cdr pair)))
@@ -100,14 +147,10 @@
   (cond
     ((eq* term1 term2)
      unified)
-    ((variablep term1)
-     (if (string= term1 *variable-prefix*)
-         unified
-         (cons (cons term1 term2) unified)))
-    ((variablep term2)
-     (if (string= term2 *variable-prefix*)
-         unified
-         (cons (cons term2 term1) unified)))
+    ((svar-p term1)
+     (cons (cons term1 term2) unified))
+    ((svar-p term2)
+     (cons (cons term2 term1) unified))
     ((and (consp term1) (consp term2))
      (let ((unified (%unify unified (car term1) (car term2))))
        (if (eq unified t)
