@@ -158,6 +158,7 @@
          (%unify unified (cdr term1) (cdr term2)))))
     (t t)))
 
+(declaim (inline unify))
 (defun unify (term1 term2)
   (let ((unified (%unify '() term1 term2)))
     (values (not (eq unified t)) unified)))
