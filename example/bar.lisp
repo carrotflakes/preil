@@ -4,99 +4,91 @@
 (use-package :preil)
 
 (print 1)
-(with-world ()
-  (%- (add ?x ?y ?z)
-      ((?x ?y ?z)
-       (when (= (+ ?x ?y) ?z)
-         (satisfy))))
+(let ((world (create-world
+               (%- (add ?x ?y ?z)
+                 ((?x ?y ?z)
+                   (when (= (+ ?x ?y) ?z)
+                     (satisfy)))))))
 
-  (print (solvep
-           '(add 1 2 3)))
-  (print (solvep
-           '(add 1 2 4)))
-  (print (solve-all ?x
-           '(add ?x 2 3)))
-  (print (solve-all ?y
-           '(add 1 ?y 3)))
-  (print (solve-all ?z
-           '(add 1 2 ?z))))
+  (print (solvep world
+           '(add 1 2 3))) ; => t
+  (print (solvep world
+           '(add 1 2 4))) ; => nil
+  (print (solve-all world ?x
+           '(add ?x 2 3))) ; => nil
+  (print (solve-all world ?y
+           '(add 1 ?y 3))) ; => nil
+  (print (solve-all world ?z
+           '(add 1 2 ?z)))) ; => nil
 
 (print 2)
-(with-world ()
-  (%- (add ?x ?y ?z)
-      ((?x ?y)
-       (satisfy :?z (+ ?x ?y))))
+(let ((world (create-world
+               (%- (add ?x ?y ?z)
+                 ((?x ?y)
+                   (satisfy :?z (+ ?x ?y)))))))
 
-  (print (solvep
+  (print (solvep world
            '(add 1 2 3)))
-  (print (solvep
+  (print (solvep world
            '(add 1 2 4)))
-  (print (solve-all ?x
+  (print (solve-all world ?x
            '(add ?x 2 3)))
-  (print (solve-all ?y
+  (print (solve-all world ?y
            '(add 1 ?y 3)))
-  (print (solve-all ?z
+  (print (solve-all world ?z
            '(add 1 2 ?z))))
 
 (print 3)
-(with-world ()
-  (%- (add ?x ?y ?z)
-      ((?x ?y ?z)
-       (when (= (+ ?x ?y) ?z)
-         (satisfy)))
-      ((?x ?y)
-       (satisfy :?z (+ ?x ?y))))
+(let ((world (create-world
+               (%- (add ?x ?y ?z)
+                 ((?x ?y ?z)
+                   (when (= (+ ?x ?y) ?z)
+                     (satisfy)))
+                 ((?x ?y)
+                   (satisfy :?z (+ ?x ?y)))))))
 
-  (print (solvep
+  (print (solvep world
            '(add 1 2 3)))
-  (print (solvep
+  (print (solvep world
            '(add 1 2 4)))
-  (print (solve-all ?x
+  (print (solve-all world ?x
            '(add ?x 2 3)))
-  (print (solve-all ?y
+  (print (solve-all world ?y
            '(add 1 ?y 3)))
-  (print (solve-all ?z
+  (print (solve-all world ?z
            '(add 1 2 ?z))))
 
 (print 4)
-(with-world ()
-  (%- (range ?x ?y)
-      ((?x)
-       (dotimes (i ?x)
-         (satisfy :?y i))))
+(let ((world (create-world
+               (%- (range ?x ?y)
+                 ((?x)
+                   (dotimes (i ?x)
+                     (satisfy :?y i)))))))
 
-  (print (solve-all ?x
+  (print (solve-all world ?x
            '(range 10 ?x))))
 
 (print 5)
-(with-world ()
-  (%- (eval ?exp ?val)
-      ((?exp)
-       (satisfy :?val (eval ?exp))))
+(let ((world (create-world
+               (%- (eval ?exp ?val)
+                 ((?exp)
+                   (satisfy :?val (eval ?exp)))))))
 
-  (print (solve-all ?x
+  (print (solve-all world ?x
            '(eval (+ 1 (* 2 3)) ?x))))
 
-
 (print 6)
-'(with-world ()
-  (%- (1+ ?n ?m)
-   ((?n)
-    (satisfy :?m (1+ ?n)))
-   ((?m)
-    (satisfy :?n (1- ?m))))
+(defvar fruits '(apple orange grape))
+(let ((world (create-world
+               (%- (fruit ?x)
+                 (() (loop
+                       for fruit in fruits
+                       do (satisfy :?x fruit)))
+                 ((?x) (when (member ?x fruits) (satisfy)))))))
 
-  ;; list-len
-  (<- (list-len () 0))
-  (<- (list-len (_ . ?xs) ?m)
-    (list-len ?xs ?n)
-    (+1 ?n ?m))
-
-  (print (solve-all ?x
-           '(1+ 1 ?x)))
-  (print (solve-all ?x
-           '(1+ ?x 1)))
-  (print (solve-all ?x
-           '(list-len (1 2 3) ?x)))
-  (print (solve-all ?x
-           '(list-len ?x 3))))
+  (print (solve-all world ?x
+           '(fruit ?x)))
+  (print (solvep world
+           '(fruit apple)))
+  (print (solve-all world ?x
+           '(fruit pineapple))))

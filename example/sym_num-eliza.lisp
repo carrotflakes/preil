@@ -8,9 +8,10 @@
 (use-package :preil)
 
 
-(with-world ()
+(let ((world
+        (create-world
 
-  (prelude:import-definition)
+  (import-world :prelude)
 
   (<- (init-memory
        ((other 1)
@@ -128,28 +129,28 @@
 
   (<- (talk ?memory (? . ?user-uttr) ?memory* ?bot-uttr)
     (talk ?memory ?user-uttr ?memory* ?bot-uttr))
-
+          )))
 
   (defun tokenize (text)
     (when (eq (aref text (1- (length text))) #\.)
       (setf text (subseq text 0 (1- (length text)))))
     (mapcar #'string-downcase
-            (split-sequence:split-sequence #\space text)))
+      (split-sequence:split-sequence #\space text)))
 
-  (preil-defun make-talker ()
+  (defun make-talker ()
     (let ((memory nil))
       (lambda (text)
         (let ((user-uttr (tokenize text)))
           (destructuring-bind (memory* bot-uttr)
-              (solve-1 (?memory ?bot-uttr)
-                `(talk ,memory ,user-uttr ?memory ?bot-uttr))
+            (solve-1 world (?memory ?bot-uttr)
+              `(talk ,memory ,user-uttr ?memory ?bot-uttr))
             (setf memory memory*)
-            bot-uttr)))))
+            bot-uttr))))))
 
-  (preil-defun talk ()
-    (format t "Hi!,I am Eliza.~%")
-    (format t "Please talk about you~%")
-    (loop
-       with talker = (make-talker)
-       for bot-uttr = (funcall talker (read-line))
-       do (format t "~a~%" bot-uttr))))
+(defun talk ()
+  (format t "Hi!,I am Eliza.~%")
+  (format t "Please talk about you~%")
+  (loop
+    with talker = (make-talker)
+    for bot-uttr = (funcall talker (read-line))
+    do (format t "~a~%" bot-uttr)))

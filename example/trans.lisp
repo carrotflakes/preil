@@ -21,135 +21,135 @@
             for i from 0
             collect `(,@term ,(nth i variables) ,(nth (1+ i) variables))))))
 
-(with-world ()
+(let ((world
+       (create-world
 
-  (prelude:import-definition)
+         (import-world :prelude)
 
-  ;; DCG の補助述語
-  (<- (w ?word ?xs ?xs*)
-      (= ?xs (?word . ?xs*)))
+         ;; DCG の補助述語
+         (<- (w ?word ?xs ?xs*)
+             (= ?xs (?word . ?xs*)))
 
-  ;; 英語構文
-  ;; 通常文
-  (--> (s (s ?np ?vp))
-       (np ?np)
-       (vp ?vp))
+         ;; 英語構文
+         ;; 通常文
+         (--> (s (s ?np ?vp))
+              (np ?np)
+              (vp ?vp))
 
-  ;; 命令文
-  (--> (s (s ?vp))
-       (vp ?vp))
+         ;; 命令文
+         (--> (s (s ?vp))
+              (vp ?vp))
 
-  ;; 名詞句
-  (--> (np (np ?n ?np))
-       (n ?n)
-       (np ?np))
-  (--> (np (np ?det ?noun))
-      (det ?det)
-      (n ?noun))
-  (--> (np (np ?noun))
-      (n ?noun))
+         ;; 名詞句
+         (--> (np (np ?n ?np))
+              (n ?n)
+              (np ?np))
+         (--> (np (np ?det ?noun))
+              (det ?det)
+              (n ?noun))
+         (--> (np (np ?noun))
+              (n ?noun))
 
-  ;; 動詞句
-  (--> (vp (vp ?vi))
-      (vi ?vi))
-  (--> (vp (vp ?vi ?pp))
-      (vi ?vi)
-      (pp ?pp))
-  (--> (vp (vp ?vt ?np))
-      (vt ?vt)
-      (np ?np))
-  (--> (vp (vp ?vt ?np ?pp))
-      (vt ?vt)
-      (np ?np)
-      (pp ?pp))
+         ;; 動詞句
+         (--> (vp (vp ?vi))
+              (vi ?vi))
+         (--> (vp (vp ?vi ?pp))
+              (vi ?vi)
+              (pp ?pp))
+         (--> (vp (vp ?vt ?np))
+              (vt ?vt)
+              (np ?np))
+         (--> (vp (vp ?vt ?np ?pp))
+              (vt ?vt)
+              (np ?np)
+              (pp ?pp))
 
-  ;; 前置詞句
-  (--> (pp (pp ?p ?np))
-      (p ?p)
-      (np ?np))
+         ;; 前置詞句
+         (--> (pp (pp ?p ?np))
+              (p ?p)
+              (np ?np))
 
-  ;; 終端節
-  (<- (n (n ?word) (?word . ?x) ?x)
-      (member ?word ("i" "you" "arrow" "flies" "time" "like")))
+         ;; 終端節
+         (<- (n (n ?word) (?word . ?x) ?x)
+             (member ?word ("i" "you" "arrow" "flies" "time" "like")))
 
-  (--> (det (det "a")) (w "a"))
-  (--> (p (p "like")) (w "like"))
+         (--> (det (det "a")) (w "a"))
+         (--> (p (p "like")) (w "like"))
 
-  ;; 動詞
-  (<- (vt (vt ?word) (?word . ?x) ?x)
-      (member ?word ("time" "like")))
-  (<- (vi (vi ?word) (?word . ?x) ?x)
-      (member ?word ("flies" "like")))
+         ;; 動詞
+         (<- (vt (vt ?word) (?word . ?x) ?x)
+             (member ?word ("time" "like")))
+         (<- (vi (vi ?word) (?word . ?x) ?x)
+             (member ?word ("flies" "like")))
 
-  ;;; 日本語構文
-  ;; 通常文
-  (--> (js (s ?np ?vp))
-       (jnp ?np)
-       (w "は")
-       (jvp ?vp))
+         ;;; 日本語構文
+         ;; 通常文
+         (--> (js (s ?np ?vp))
+              (jnp ?np)
+              (w "は")
+              (jvp ?vp))
 
-  ;; 命令文
-  (--> (js (s ?vp))
-       (jvp ?vp))
+         ;; 命令文
+         (--> (js (s ?vp))
+              (jvp ?vp))
 
-  ;; 名詞句
-  (--> (jnp (np ?n ?np))
-       (jn ?n)
-       (w "の")
-       (jnp ?np))
-  (--> (jnp (np ?det ?noun))
-       (jdet ?det)
-       (jn ?noun))
-  (--> (jnp (np ?noun))
-       (jn ?noun))
+         ;; 名詞句
+         (--> (jnp (np ?n ?np))
+              (jn ?n)
+              (w "の")
+              (jnp ?np))
+         (--> (jnp (np ?det ?noun))
+              (jdet ?det)
+              (jn ?noun))
+         (--> (jnp (np ?noun))
+              (jn ?noun))
 
-  ;; 動詞句
-  (--> (jvp (vp ?vi))
-       (jvi ?vi))
-  (--> (jvp (vp ?vi ?pp))
-       (jpp ?pp)
-       (jvi ?vi))
+         ;; 動詞句
+         (--> (jvp (vp ?vi))
+              (jvi ?vi))
+         (--> (jvp (vp ?vi ?pp))
+              (jpp ?pp)
+              (jvi ?vi))
 
-  (--> (jvp (vp ?vt ?np))
-       (jnp ?np)
-       (w "を")
-       (jvt ?vt))
-  (--> (jvp (vp ?vt ?np ?pp))
-       (jnp ?np)
-       (w "を")
-       (jpp ?pp)
-       (jvt ?vt))
+         (--> (jvp (vp ?vt ?np))
+              (jnp ?np)
+              (w "を")
+              (jvt ?vt))
+         (--> (jvp (vp ?vt ?np ?pp))
+              (jnp ?np)
+              (w "を")
+              (jpp ?pp)
+              (jvt ?vt))
 
-  ;; 前置詞句
-  (--> (jpp (pp ?p ?np))
-       (jnp ?np)
-       (jp ?p))
+         ;; 前置詞句
+         (--> (jpp (pp ?p ?np))
+              (jnp ?np)
+              (jp ?p))
 
-  ;; 終端節
-  (<- (jn (n ?word) (?jword . ?x) ?x)
-    (member (?word ?jword)
-            (("i" "私")
-             ("you" "あなた")
-             ("arrow" "矢")
-             ("flies" "蝿")
-             ("time" "時")
-             ("like" "好み"))))
+         ;; 終端節
+         (<- (jn (n ?word) (?jword . ?x) ?x)
+             (member (?word ?jword)
+                     (("i" "私")
+                      ("you" "あなた")
+                      ("arrow" "矢")
+                      ("flies" "蝿")
+                      ("time" "時")
+                      ("like" "好み"))))
 
-  (--> (jdet (det "a")) (w "ひとつの"))
-  (--> (jp (p "like")) (w "のように"))
+         (--> (jdet (det "a")) (w "ひとつの"))
+         (--> (jp (p "like")) (w "のように"))
 
-  ;; 動詞
-  (<- (jvt (vt ?word) (?jword . ?x) ?x)
-    (member (?word ?jword)
-            (("time" "計る")
-             ("like" "好む")
-             ("flies" "揚げる"))))
-  (<- (jvi (vi ?word) (?jword . ?x) ?x)
-    (member (?word ?jword)
-            (("like" "好む")
-             ("flies" "飛ぶ")
-             ("flies" "揚がる"))))
-
+         ;; 動詞
+         (<- (jvt (vt ?word) (?jword . ?x) ?x)
+             (member (?word ?jword)
+                     (("time" "計る")
+                      ("like" "好む")
+                      ("flies" "揚げる"))))
+         (<- (jvi (vi ?word) (?jword . ?x) ?x)
+             (member (?word ?jword)
+                     (("like" "好む")
+                      ("flies" "飛ぶ")
+                      ("flies" "揚がる")))))))
 
   (defun tokenize (text)
     (when (eq (aref text (1- (length text))) #\.)
@@ -157,13 +157,13 @@
     (mapcar #'string-downcase
             (split-sequence:split-sequence #\space text)))
 
-  (preil-defun en-jp (en-text)
-    (solve-1 ?jp-tokens
+  (defun en-jp (en-text)
+    (solve-1 world ?jp-tokens
       `(s ?imi ,(tokenize en-text) ())
       `(js ?imi ?jp-tokens ())))
 
-  (preil-defun jp-en (jp-text)
-    (solve-1 ?en-tokens
+  (defun jp-en (jp-text)
+    (solve-1 world ?en-tokens
       `(js ?imi ,(tokenize jp-text) ())
       `(s ?imi ?en-tokens ())))
   )
