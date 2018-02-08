@@ -73,10 +73,10 @@
                 (world-predicates inner-world))))
 
 
-(defun exec (goals term)
-  (when (null goals)
+(defun exec (goals)
+  (when (null (cdr goals))
     (when *resolved-function*
-      (funcall *resolved-function* term)))
+      (funcall *resolved-function* (first goals))))
 
   (let ((goal (pop goals)))
 
@@ -90,12 +90,11 @@
           do (apply function
                     (lambda (bindings)
                       (let ((term-2 (sub free-variables bindings))) ; term-2 contains no svar.
-                        '(format t "~%!~a~% ~a~% ~a~% ~a" term-1 term-2 bindings term)
+                        '(format t "~%!~a~% ~a~% ~a" term-1 term-2 bindings)
                         (next-bound-id)
                         (when (and (unify goal (predicate-head predicate)) ; XXX
                                    (unify free-svars term-2))
-                          (exec (ssub goals)
-                                (ssub term)))))
+                          (exec (ssub goals)))))
                     parameters)
              (return))))
 
@@ -104,10 +103,8 @@
       (when (unify goal (car clause))
         '(format t "~%!~a~%~a~%~a~%" term goal clause)
         (bind-new-svar clause)
-        (exec (ssub (append (cdr clause) goals))
-              (ssub term))))))
+        (exec (ssub (append (cdr clause) goals)))))))
 
 (defun solve (*world* term goals *resolved-function*)
-  (destructuring-bind (goals . term) (cleanse-term (cons goals term))
-    (exec goals term))
+  (exec (cleanse-term (append goals (list term))))
   nil)
