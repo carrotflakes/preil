@@ -19,16 +19,14 @@
        ,@(loop
             for term in terms
             for i from 0
-            collect `(,@term ,(nth i variables) ,(nth (1+ i) variables))))))
+            collect (if (stringp term)
+                        `(= ,(nth i variables) (,term . ,(nth (1+ i) variables)))
+                        `(,@term ,(nth i variables) ,(nth (1+ i) variables)))))))
 
 (let ((world
        (create-world
 
          (import-world :prelude)
-
-         ;; DCG の補助述語
-         (<- (w ?word ?xs ?xs*)
-             (= ?xs (?word . ?xs*)))
 
          ;; 英語構文
          ;; 通常文
@@ -73,8 +71,8 @@
          (<- (n (n ?word) (?word . ?x) ?x)
              (member ?word ("i" "you" "arrow" "flies" "time" "like")))
 
-         (--> (det (det "a")) (w "a"))
-         (--> (p (p "like")) (w "like"))
+         (--> (det (det "a")) "a")
+         (--> (p (p "like")) "like")
 
          ;; 動詞
          (<- (vt (vt ?word) (?word . ?x) ?x)
@@ -86,7 +84,7 @@
          ;; 通常文
          (--> (js (s ?np ?vp))
               (jnp ?np)
-              (w "は")
+              "は"
               (jvp ?vp))
 
          ;; 命令文
@@ -96,7 +94,7 @@
          ;; 名詞句
          (--> (jnp (np ?n ?np))
               (jn ?n)
-              (w "の")
+              "の"
               (jnp ?np))
          (--> (jnp (np ?det ?noun))
               (jdet ?det)
@@ -113,11 +111,11 @@
 
          (--> (jvp (vp ?vt ?np))
               (jnp ?np)
-              (w "を")
+              "を"
               (jvt ?vt))
          (--> (jvp (vp ?vt ?np ?pp))
               (jnp ?np)
-              (w "を")
+              "を"
               (jpp ?pp)
               (jvt ?vt))
 
@@ -136,8 +134,8 @@
                       ("time" "時")
                       ("like" "好み"))))
 
-         (--> (jdet (det "a")) (w "ひとつの"))
-         (--> (jp (p "like")) (w "のように"))
+         (--> (jdet (det "a")) "ひとつの")
+         (--> (jp (p "like")) "のように")
 
          ;; 動詞
          (<- (jvt (vt ?word) (?jword . ?x) ?x)
