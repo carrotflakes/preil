@@ -23,7 +23,7 @@
 
 (defstruct predicate
   head
-  patterns) ; A list of (bound-variables free-variables function)
+  patterns) ; A list of (bound-svars free-svars free-variables function)
 
 
 (defun add-clause (world head body)
@@ -35,7 +35,7 @@
   (let* ((head-variables (collect-variables head))
          (bindings (variables-cleanse-bindings head-variables))
          (cleansed-head (sub head bindings))
-         (cleansed-patterns
+         (built-patterns
           (mapcar
             #'(lambda (pattern)
                 (destructuring-bind (bound-variables . body) pattern
@@ -47,17 +47,19 @@
                                          ,@(loop
                                              for variable in free-variables
                                              collect `(list 'cons
-                                                            '',(sub variable bindings)
-                                                        ,variable)))))))
+                                                            ;'',(sub variable bindings)
+                                                            '',variable
+                                                            ,variable)))))))
                     (list
                       (sub bound-variables bindings)
                       (sub free-variables bindings)
+                      free-variables
                       (eval `(lambda (%satisfy ,@bound-variables)
                                (macrolet (,satisfy-macro-definition)
                                  ,@body)))))))
             patterns))
          (predicate (make-predicate :head cleansed-head
-                                    :patterns cleansed-patterns)))
+                                    :patterns built-patterns)))
     (setf (world-predicates world)
           (append (world-predicates world)
             (list predicate)))))
@@ -79,41 +81,31 @@
   (let ((goal (pop goals)))
 
     (dolist (predicate (world-predicates *world*))
-      (multiple-value-bind (matched bindings)
-          (unify goal (predicate-head predicate))
-        (when matched
-          (loop
-             for (bound-variables free-variables function) in (predicate-patterns predicate)
-             for parameters = (ssub bound-variables bindings)
-             when (notany #'contains-svar-p parameters)
-             do (apply function
-                       (lambda (bindings*)
-                         (let ((term-1 (ssub free-variables bindings))
-                               (term-2 (ssub free-variables bindings*)))
-                           (multiple-value-bind (matched bindings**)
-                               (unify term-1 term-2)
-                             (when matched
-                               (let ((bindings (append bindings bindings**)))
-                                 (exec (ssub goals bindings)
-                                       (ssub term bindings)))))))
-                       parameters)
-               (return)))))
+      (next-bound-id)
+      (when (unify goal (predicate-head predicate))
+        (loop
+          for (bound-svars free-svars free-variables function) in (predicate-patterns predicate)
+          for parameters = (ssub bound-svars)
+          when (notany #'contains-svar-p parameters) ; If parameters contain svar, cannot apply the predicate.
+          do (apply function
+                    (lambda (bindings)
+                      (let ((term-2 (sub free-variables bindings))) ; term-2 contains no svar.
+                        '(format t "~%!~a~% ~a~% ~a~% ~a" term-1 term-2 bindings term)
+                        (next-bound-id)
+                        (when (and (unify goal (predicate-head predicate)) ; XXX
+                                   (unify free-svars term-2))
+                          (exec (ssub goals)
+                                (ssub term)))))
+                    parameters)
+             (return))))
 
     (dolist (clause (world-clauses *world*))
-      (multiple-value-bind (matched bindings) (unify goal (car clause))
-        (when matched
-          '(format t "!~a~%~a~%~a~%~a~%~%" term goal clause bindings)
-          (setf bindings
-                (append bindings
-                        (loop
-                           for svar in (collect-svars clause)
-                           unless (assoc svar bindings)
-                           collect (cons svar (make-svar :name (svar-name svar))))))
-          (exec (append (ssub (cdr clause)
-                              bindings)
-                        (ssub goals
-                              bindings))
-                (ssub term bindings)))))))
+      (next-bound-id)
+      (when (unify goal (car clause))
+        '(format t "~%!~a~%~a~%~a~%" term goal clause)
+        (bind-new-svar clause)
+        (exec (ssub (append (cdr clause) goals))
+              (ssub term))))))
 
 (defun solve (*world* term goals *resolved-function*)
   (destructuring-bind (goals . term) (cleanse-term (cons goals term))
