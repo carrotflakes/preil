@@ -63,10 +63,16 @@
                (%- (range ?x ?y)
                  ((?x)
                    (dotimes (i ?x)
-                     (satisfy :?y i)))))))
+                     (satisfy :?y i))))
+               (%- (mod ?x ?y ?z)
+                 ((?x ?y)
+                   (satisfy :?z (mod ?x ?y)))))))
 
   (print (solve-all world ?x
-           '(range 10 ?x))))
+           '(range 10 ?x)))
+  (print (solve-all world ?y
+           '(range 10 ?x)
+           '(mod ?x 3 ?y))))
 
 (print 5)
 (let ((world (create-world

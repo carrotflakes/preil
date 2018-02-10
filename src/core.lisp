@@ -43,13 +43,7 @@
                          (satisfy-macro-definition
                           `(satisfy (&key ,@free-variables)
                              (list 'funcall '%satisfy
-                                   (list 'list
-                                         ,@(loop
-                                             for variable in free-variables
-                                             collect `(list 'cons
-                                                            ;'',(sub variable bindings)
-                                                            '',variable
-                                                            ,variable)))))))
+                                   (list 'list ,@free-variables)))))
                     (list
                       (sub bound-variables bindings)
                       (sub free-variables bindings)
@@ -88,13 +82,12 @@
           for parameters = (ssub bound-svars)
           when (notany #'contains-svar-p parameters) ; If parameters contain svar, cannot apply the predicate.
           do (apply function
-                    (lambda (bindings)
-                      (let ((term-2 (sub free-variables bindings))) ; term-2 contains no svar.
-                        '(format t "~%!~a~% ~a~% ~a" term-1 term-2 bindings)
-                        (next-bound-id)
-                        (when (and (unify goal (predicate-head predicate)) ; XXX
-                                   (unify free-svars term-2))
-                          (exec (ssub goals)))))
+                    (lambda (term-2) ; term-2 contains no svar.
+                      '(format t "~%!~a~% ~a~% ~a" term-1 term-2 bindings)
+                      (next-bound-id)
+                      (when (and (unify goal (predicate-head predicate)) ; XXX
+                                 (unify free-svars term-2))
+                        (exec (ssub goals))))
                     parameters)
              (return))))
 
