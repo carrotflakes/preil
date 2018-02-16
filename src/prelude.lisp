@@ -9,6 +9,7 @@
            #:reverse
            #:conc
            #:conc*
+           #:select
            #:and
            #:or
            #:if
@@ -77,6 +78,9 @@
   (<- (conc* ((?x ?x* . ?xs) . ?xss) (?x . ?ys))
     (conc* ((?x* . ?xs) . ?xss) ?ys))
 
+  (<- (select ?x (?x . ?xs) ?xs))
+  (<- (select ?x (?y . ?ys) (?y . ?zs))
+    (select ?x ?ys ?zs))
 
   (<- (or ?x . ?)
     ?x)
