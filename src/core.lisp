@@ -67,36 +67,42 @@
                 (world-predicates inner-world))))
 
 
+(declaim (inline dispatch-predicate))
+(defun dispatch-predicate (goal goals predicate)
+  (next-bound-id)
+  (when (unify goal (predicate-head predicate))
+    (loop
+      for (bound-svars free-svars free-variables function) in (predicate-patterns predicate)
+      for parameters = (ssub bound-svars)
+      when (notany #'contains-svar-p parameters) ; If parameters contain svar, cannot apply the predicate.
+      do (apply function
+                (lambda (term-2) ; term-2 contains no svar.
+                  '(format t "~%!~a~% ~a~% ~a" term-1 term-2 bindings)
+                  (next-bound-id)
+                  (when (and (unify goal (predicate-head predicate)) ; XXX
+                             (unify free-svars term-2))
+                    (exec (ssub goals))))
+                parameters)
+         (return))))
+
+(declaim (inline dispatch-clause))
+(defun dispatch-clause (goal goals clause)
+  (next-bound-id)
+  (when (unify goal (car clause))
+    '(format t "~%!~a~%~a~%~a~%" term goal clause)
+    (bind-new-svar clause)
+    (exec (ssub (append (cdr clause) goals)))))
+
 (defun exec (goals)
   (when (null (cdr goals))
     (when *resolved-function*
       (funcall *resolved-function* (first goals))))
 
   (let ((goal (pop goals)))
-
     (dolist (predicate (world-predicates *world*))
-      (next-bound-id)
-      (when (unify goal (predicate-head predicate))
-        (loop
-          for (bound-svars free-svars free-variables function) in (predicate-patterns predicate)
-          for parameters = (ssub bound-svars)
-          when (notany #'contains-svar-p parameters) ; If parameters contain svar, cannot apply the predicate.
-          do (apply function
-                    (lambda (term-2) ; term-2 contains no svar.
-                      '(format t "~%!~a~% ~a~% ~a" term-1 term-2 bindings)
-                      (next-bound-id)
-                      (when (and (unify goal (predicate-head predicate)) ; XXX
-                                 (unify free-svars term-2))
-                        (exec (ssub goals))))
-                    parameters)
-             (return))))
-
+      (dispatch-predicate goal goals predicate))
     (dolist (clause (world-clauses *world*))
-      (next-bound-id)
-      (when (unify goal (car clause))
-        '(format t "~%!~a~%~a~%~a~%" term goal clause)
-        (bind-new-svar clause)
-        (exec (ssub (append (cdr clause) goals)))))))
+      (dispatch-clause goal goals clause))))
 
 (defun solve (*world* term goals *resolved-function*)
   (exec (cleanse-term (append goals (list term))))
