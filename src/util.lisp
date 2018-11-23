@@ -21,7 +21,7 @@
   name
   local-index)
 
-(defmethod print-object ((obj svar) out)
+'(defmethod print-object ((obj svar) out)
   #+sbcl(format out "~a~a" (svar-name obj) (svar-local-index obj))
   #-sbcl(format out "#~a" (svar-name obj)))
 
@@ -29,12 +29,12 @@
 (declaim (inline eq*))
 (defun eq* (l r)
 	(if (stringp l)
-			(and (stringp r) (string= l r))
-      (eq l r)))
+            (and (stringp r) (string= l r))
+            (eq l r)))
 
 (defun variablep (object)
   (and (symbolp object)
-       (string= object *variable-prefix* :end1 1 :end2 1)))
+       (string= object *variable-prefix* :end1 1)))
 
 (defun term-replace-variable-with-svar (term)
   (let ((local-index -1)

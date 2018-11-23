@@ -41,6 +41,8 @@
 
 (defmacro unwind-protect-memory (form)
   `(let ((write-table-pointer *write-table-pointer*))
+     (unless (or *memory* *write-table*)
+       (error "memory is not initialized"))
     (unwind-protect
          ,form
       (memory-rewind write-table-pointer))))

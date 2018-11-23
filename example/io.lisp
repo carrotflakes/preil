@@ -3,6 +3,8 @@
 
 (use-package :preil)
 
+(initialize-memory 1000)
+
 (solvep
   (create-world
     (%- (read ?x)

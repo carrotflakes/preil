@@ -19,7 +19,7 @@
 
 
 (defstruct world
-  (clauses nil)A
+  (clauses nil)
   (predicates nil))
 
 (defstruct clause

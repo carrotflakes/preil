@@ -20,10 +20,10 @@
 (defvar *write-table-pointer* 0)
 
 (defmacro memory-term (pointer)
-  `(svref *memory* (* ,pointer 2)))
+  `(svref *memory* (the fixnum (* (the fixnum ,pointer) 2))))
 
 (defmacro memory-pointer (pointer)
-  `(svref *memory* (+ (* ,pointer 2) 1)))
+  `(the fixnum (svref *memory* (the fixnum (+ (* (the fixnum ,pointer) 2) 1)))))
 
 (defun make-memory (size)
   (make-array (* size 2) :element-type 't :initial-element 'no)) ; TODO: no -> 0
@@ -40,20 +40,26 @@
 
 (declaim (inline svar-term))
 (defun svar-term (svar pointer)
-  (values (memory-term (+ pointer (svar-local-index svar)))
-          (memory-pointer (+ pointer (svar-local-index svar)))))
+  (declare (type (simple-vector *) *memory*)
+           (type fixnum pointer))
+  (values (memory-term (+ pointer (the fixnum (svar-local-index svar))))
+          (memory-pointer (+ pointer (the fixnum (svar-local-index svar))))))
 
 (declaim (inline svar-bind))
 (defun svar-bind (svar pointer term term-pointer)
-  (incf pointer (svar-local-index svar))
+  (declare (type (simple-vector *) *memory*)
+           (type fixnum pointer *write-table-pointer*))
+  (incf pointer (the fixnum (svar-local-index svar)))
   (setf (memory-term pointer) term
-        (memory-pointer pointer) term-pointer
-        (aref *write-table* *write-table-pointer*) pointer)
+        (memory-pointer pointer) (the fixnum term-pointer)
+        (aref *write-table* (the fixnum *write-table-pointer*)) pointer)
   (incf *write-table-pointer*))
 
 (declaim (inline unified-value))
 (defun unified-value (term pointer)
-  (declare (optimize (speed 3) (safety 0) (space 0) (debug 0)))
+  (declare (optimize (speed 3) (safety 0) (space 0) (debug 0))
+           (type (simple-vector *) *memory*)
+           (type (simple-array fixnum (*)) *write-table*))
   (loop
     while (svar-p term)
     do (multiple-value-bind (term* pointer*)
@@ -65,7 +71,9 @@
   (values term pointer))
 
 (defun unify% (term1 pointer1 term2 pointer2)
-  (declare (optimize (speed 3) (safety 0) (space 0) (debug 0)))
+  (declare (optimize (speed 3) (safety 0) (space 0) (debug 0))
+           (type (simple-vector *) *memory*)
+           (type (simple-array fixnum (*)) *write-table*))
 
   (multiple-value-setq (term1 pointer1) (unified-value term1 pointer1))
   (multiple-value-setq (term2 pointer2) (unified-value term2 pointer2))
