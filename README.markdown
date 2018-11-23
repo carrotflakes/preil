@@ -5,6 +5,9 @@ A prolog-like logic programming library for Common Lisp.
 ## Usage
 
 ```lisp
+;; First, you need secure some memory.
+(initialize-memory 1000)
+
 (defvar world
   (create-world
     ;; Define 'append' predicate.
