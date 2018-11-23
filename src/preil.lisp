@@ -2,8 +2,10 @@
 (defpackage preil
   (:use :cl
         :preil.util
+        :preil.unify
         :preil.core)
-  (:export #:create-world
+  (:export #:initialize-memory
+           #:create-world
            #:<-
            #:%-
            #:import-world
@@ -16,6 +18,11 @@
            #:do-solve
            #:satisfy))
 (in-package :preil)
+
+
+(defun initialize-memory (size)
+  (setf *memory* (make-memory size)
+        *write-table* (make-write-table size)))
 
 
 (defmacro create-world (&body body)
@@ -32,11 +39,18 @@
        ,world)))
 
 
+(defmacro unwind-protect-memory (form)
+  `(let ((write-table-pointer *write-table-pointer*))
+    (unwind-protect
+         ,form
+      (memory-rewind write-table-pointer))))
+
 (defun %solve-1 (world term clauses)
-  (block solve-1
+  (unwind-protect-memory
+   (block solve-1
      (solve world term clauses
             (lambda (result)
-              (return-from solve-1 (values result t))))))
+              (return-from solve-1 (values result t)))))))
 
 (defmacro solve-1 (world term &body clauses)
   `(%solve-1 ,world ',term (list ,@clauses)))
@@ -52,11 +66,12 @@
               ,@body)))))
 
 (defun %solve-all (world term clauses)
-  (let ((result nil))
-    (solve world term clauses
-           (lambda (term)
-             (push term result)))
-    (nreverse result)))
+  (unwind-protect-memory
+   (let ((result nil))
+     (solve world term clauses
+            (lambda (term)
+              (push term result)))
+     (nreverse result))))
 
 (defmacro solve-all (world term &body clauses)
   `(%solve-all ,world ',term (list ,@clauses)))

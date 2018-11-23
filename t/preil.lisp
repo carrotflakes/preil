@@ -10,6 +10,8 @@
 (plan nil)
 
 
+(initialize-memory 1000)
+
 (defvar world
   (create-world
     (import-world :prelude)))
@@ -17,6 +19,10 @@
 
 (is (solve-all world ?x '(append (1 2) (3 4) ?x))
   '((1 2 3 4))
+  :test #'equal)
+
+(is (solve-all world (?x ?y) '(append ?x ?y (1 2 3)))
+  '((() (1 2 3)) ((1) (2 3)) ((1 2) (3)) ((1 2 3) ()))
   :test #'equal)
 
 (is (solve-all world ?x '(format ?x "~a-~b" a 1))

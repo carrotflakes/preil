@@ -3,6 +3,8 @@
 
 (use-package :preil)
 
+(initialize-memory 10000)
+
 (print 1)
 (let ((world (create-world
                (%- (add ?x ?y ?z)

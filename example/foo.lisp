@@ -3,6 +3,7 @@
 
 (use-package :preil)
 
+(initialize-memory 1000)
 
 (do-solve
   (create-world

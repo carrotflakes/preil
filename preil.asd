@@ -20,8 +20,9 @@
   :components ((:module "src"
                 :components
                 ((:file "util")
-                 (:file "core" :depends-on ("util"))
-                 (:file "preil" :depends-on ("core")))))
+                 (:file "unify" :depends-on ("util"))
+                 (:file "core" :depends-on ("util" "unify"))
+                 (:file "preil" :depends-on ("util" "unify" "core")))))
   :description "A logic programming library for Common Lisp"
   :long-description
   #.(with-open-file (stream (merge-pathnames
