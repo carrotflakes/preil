@@ -74,6 +74,6 @@
    (print (solve-all world (?houses ?water-drinker ?zebra-owner) `(zebra ?houses ?water-drinker ?zebra-owner)))
    (sb-profile:report))
 
-  (zebra-benchmark 10)
+  (zebra-benchmark 1000)
   ;(print preil.util::*bound-id*)
   )

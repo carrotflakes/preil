@@ -29,8 +29,8 @@
 
 (defstruct predicate
   head
-  patterns
-  variable-num) ; A list of (bound-svars free-svars free-variables function)
+  patterns ; A list of (bound-svars free-svars free-variables function)
+  variable-num)
 
 
 (defun add-clause (world head body)
@@ -112,7 +112,7 @@
               (car goal)
               (clause-head clause) (subseq *memory* 0 20))
       '(print (list :unified clause))
-      (let ((goals (append (terms-goals (clause-body clause) *pointer*) goals))
+      (let ((goals (nconc (terms-goals (clause-body clause) *pointer*) goals))
             (*pointer* (+ *pointer* (clause-variable-num clause))))
         (exec goals)))
     (memory-rewind write-table-pointer)))
