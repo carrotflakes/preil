@@ -27,7 +27,9 @@
            #:numberp
            #:integerp
            #:symbolp
-           #:string-chars))
+           #:string-chars
+           #:int<
+           #:int<=))
 (in-package :preil.prelude)
 
 
@@ -191,4 +193,69 @@
       ((?chars)
        (when (and (listp ?chars) (every #'characterp ?chars))
          (satisfy :?string (coerce ?chars 'string)))))
+
+  (%- (int< ?x ?y)
+      ((?x ?y)
+       (and (integerp ?x)
+            (integerp ?y)
+            (< ?x ?y)
+            (satisfy)))
+      ((?x)
+       (when (integerp ?x)
+         (loop
+           with ?y = ?x
+           do (satisfy :?y (incf ?y)))))
+      ((?y)
+       (when (integerp ?y)
+         (loop
+           with ?x = ?y
+           do (satisfy :?x (decf ?x))))))
+
+  (%- (int< ?x ?y ?z)
+      ((?x ?y ?z)
+       (and (integerp ?x)
+            (integerp ?y)
+            (integerp ?z)
+            (< ?x ?y ?z)
+            (satisfy)))
+      ((?x ?z)
+       (and (integerp ?x)
+            (integerp ?z)
+            (< ?x ?z)
+            (loop
+              for ?y from (1+ ?x) below ?z
+              do (satisfy :?y ?y)))))
+
+  (%- (int<= ?x ?y)
+      ((?x ?y)
+       (and (integerp ?x)
+            (integerp ?y)
+            (< ?x ?y)
+            (satisfy)))
+      ((?x)
+       (when (integerp ?x)
+         (loop
+           with ?y = ?x
+           do (satisfy :?y (incf ?y)))))
+      ((?y)
+       (when (integerp ?y)
+         (loop
+           with ?x = ?y
+           do (satisfy :?x (decf ?x))))))
+
+  (%- (int<= ?x ?y ?z)
+      ((?x ?y ?z)
+       (and (integerp ?x)
+            (integerp ?y)
+            (integerp ?z)
+            (<= ?x ?y ?z)
+            (satisfy)))
+      ((?x ?z)
+       (and (integerp ?x)
+            (integerp ?z)
+            (<= ?x ?z)
+            (loop
+              for ?y from ?x to ?z
+              do (satisfy :?y ?y)))))
+
   *world*)
