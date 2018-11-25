@@ -2,7 +2,8 @@
 (defpackage preil.core
   (:use :cl
         :preil.util
-        :preil.unify)
+        :preil.unify
+        :preil.dictionary)
   (:export #:*world*
            #:%make-world
            #:copy-world
@@ -23,7 +24,8 @@
 
 (defstruct (world (:constructor %make-world))
   (clauses nil)
-  (predicates nil))
+  (predicates nil)
+  (dictionary (make-dictionary)))
 
 (defstruct clause
   head
@@ -42,8 +44,9 @@
                   (make-clause :head (car term)
                                :body (cdr term)
                                :variable-num variable-num))))
-  (setf (world-clauses world)
-        (append (world-clauses world) (list clause)))))
+    (setf (world-clauses world)
+          (append (world-clauses world) (list clause)))
+    (add (clause-head clause) clause (world-dictionary world))))
 
 (defun add-predicate (world head patterns)
   (multiple-value-bind (head variable-num bindings)
@@ -71,15 +74,17 @@
                                       :variable-num variable-num)))
       (setf (world-predicates world)
             (append (world-predicates world)
-                    (list predicate))))))
+                    (list predicate)))
+      (add (predicate-head predicate) predicate (world-dictionary world)))))
 
-(defun merge-world (world inner-world)
+(defun merge-world (world inner-world) ; FIXME
   (setf (world-clauses world)
         (append (world-clauses world)
                 (world-clauses inner-world))
         (world-predicates world)
         (append (world-predicates world)
-                (world-predicates inner-world))))
+                (world-predicates inner-world)))
+  (merge-dictionary (world-dictionary world) (world-dictionary inner-world)))
 
 
 (declaim (inline terms-goals))
@@ -131,9 +136,14 @@
       (funcall *resolved-function* (substantiate (caar goals) (cdar goals)))))
 
   (let ((goal (pop goals)))
-    (dolist (predicate (world-predicates *world*))
+    (dolist (item (consult (car goal) (world-dictionary *world*)))
+      (if (clause-p item)
+          (dispatch-clause goal goals item)
+          (dispatch-predicate goal goals item)))
+          
+    '(dolist (predicate (world-predicates *world*))
       (dispatch-predicate goal goals predicate))
-    (dolist (clause (world-clauses *world*))
+    '(dolist (clause (world-clauses *world*))
       (dispatch-clause goal goals clause))))
 
 (defun solve (term goals *resolved-function*

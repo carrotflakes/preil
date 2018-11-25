@@ -6,9 +6,7 @@
 
 (initialize-memory 10000)
 
-(let ((world (create-world
-
-               (import-world :prelude)
+(in-world (make-world :based (prelude:get-world)))
 
   (<- (nextto ?x ?y ?list) (iright ?x ?y ?list))
   (<- (nextto ?x ?y ?list) (iright ?y ?x ?list))
@@ -42,10 +40,10 @@
       )
 
   ;; The result: [house(norwegian,fox,kools,water,yellow),house(ukrainian,horse,chesterfield,tea,blue),house(englishman,snails,winston,milk,red),house(spaniard,dog,luckystrike,oj,ivory),house(japanese,zebra,parliaments,coffee,green)]
-               )))
 
-  (print (solvep world '(zebra ? ? ?)))
-  (print (solve-all world (?houses ?water-drinker ?zebra-owner)
+
+  (print (solvep '(zebra ? ? ?)))
+  (print (solve-all (?houses ?water-drinker ?zebra-owner)
            `(zebra ?houses ?water-drinker ?zebra-owner)))
 
   (defun zebra-benchmark (&optional (n 1000))
@@ -53,7 +51,7 @@
     (let (rt0 rt1)
       (time (loop initially (setf rt0 (get-internal-run-time))
                repeat n
-               do (solvep world '(zebra ?houses ?water-drinker ?zebra-owner))
+               do (solvep '(zebra ?houses ?water-drinker ?zebra-owner))
                                         ; Stop once answer is found.
                                         ; This appears to be
                                         ; what other implementations do,
@@ -61,7 +59,7 @@
                                         ; SWI Prolog.
                finally (setf rt1 (get-internal-run-time))))
       (destructuring-bind (zebra-owner water-drinker houses)
-          (solve-1 world (?houses ?water-drinker ?zebra-owner)
+          (solve-1 (?houses ?water-drinker ?zebra-owner)
                    '(zebra ?houses ?water-drinker ?zebra-owner))
         (values (/ (* n 12825) (/ (- rt1 rt0) 1000.0)) ; real time
                                         ; is milliseconds
@@ -69,11 +67,11 @@
 
   '(progn
     (sb-profile:profile "PREIL.CORE" "PREIL.UTIL")
-    (solve-all world (?houses ?water-drinker ?zebra-owner) `(zebra ?houses ?water-drinker ?zebra-owner))
-    (solve-all world (?houses ?water-drinker ?zebra-owner) `(zebra ?houses ?water-drinker ?zebra-owner))
-   (print (solve-all world (?houses ?water-drinker ?zebra-owner) `(zebra ?houses ?water-drinker ?zebra-owner)))
+    (solve-all (?houses ?water-drinker ?zebra-owner) `(zebra ?houses ?water-drinker ?zebra-owner))
+    (solve-all (?houses ?water-drinker ?zebra-owner) `(zebra ?houses ?water-drinker ?zebra-owner))
+   (print (solve-all (?houses ?water-drinker ?zebra-owner) `(zebra ?houses ?water-drinker ?zebra-owner)))
    (sb-profile:report))
 
   (zebra-benchmark 1000)
   ;(print preil.util::*bound-id*)
-  )
+

@@ -20,8 +20,9 @@
   :components ((:module "src"
                 :components
                 ((:file "util")
+                 (:file "dictionary")
                  (:file "unify" :depends-on ("util"))
-                 (:file "core" :depends-on ("util" "unify"))
+                 (:file "core" :depends-on ("util" "unify" "dictionary"))
                  (:file "preil" :depends-on ("util" "unify" "core")))))
   :description "A logic programming library for Common Lisp"
   :long-description
