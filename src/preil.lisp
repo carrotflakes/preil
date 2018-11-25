@@ -5,7 +5,10 @@
         :preil.unify
         :preil.core)
   (:export #:initialize-memory
+           #:*world*
            #:make-world
+           #:copy-world
+           #:world-p
            #:in-world
            #:with-world
            #:<-
@@ -27,6 +30,17 @@
         *write-table* (make-write-table size)))
 
 
+(defun make-world (&key based)
+  (let ((world (%make-world)))
+    (cond
+      ((world-p based)
+       (merge-world world based))
+      ((and (listp based) (every #'world-p based))
+       (map 'nil (lambda (w) (merge-world world w)) based))
+      (t
+       (error "Invalid based parameter: ~a" based)))
+    world))
+
 (defun in-world (world) ; TODO :based '(world-1 world-2 ...)
   (setf *world* world))
 
@@ -40,7 +54,7 @@
 (defmacro %- (head &body patterns)
   `(add-predicate *world* ',head ',patterns))
 
-(defmacro import-world (package)
+(defmacro import-world (package) ; deprecated
   `(merge-world *world* (funcall (intern "GET-WORLD" ,package))))
 
 

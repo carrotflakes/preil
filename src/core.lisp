@@ -4,7 +4,9 @@
         :preil.util
         :preil.unify)
   (:export #:*world*
-           #:make-world
+           #:%make-world
+           #:copy-world
+           #:world-p
            #:add-clause
            #:add-predicate
            #:merge-world
@@ -19,7 +21,7 @@
 (defvar *resolved-function* nil)
 
 
-(defstruct world
+(defstruct (world (:constructor %make-world))
   (clauses nil)
   (predicates nil))
 
@@ -103,7 +105,7 @@
                     (memory-rewind write-table-pointer-2))
                   parameters)
            (return)
-        finally (error "Out of implements" (substantiate (car goal) (cdr goal)))))
+        finally (error "Out of implements for ~a" (substantiate (car goal) (cdr goal)))))
     (memory-rewind write-table-pointer-1)))
 
 (declaim (inline dispatch-clause))

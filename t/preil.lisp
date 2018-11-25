@@ -12,9 +12,7 @@
 
 (initialize-memory 1000)
 
-(in-world (make-world))
-
-(import-world :prelude)
+(in-world (make-world :based (prelude:get-world)))
 
 
 (is (solve-all ?x '(append (1 2) (3 4) ?x))
