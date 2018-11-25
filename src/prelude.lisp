@@ -48,8 +48,7 @@
     (t
      term)))
 
-(defun get-world ()
-  (create-world
+(defun get-world (&aux (*world* (make-world)))
   (<- (= ?x ?x))
 
   (<- (member ?x (?x . ?)))
@@ -127,7 +126,7 @@
                                     ?var-syms))
                  (clause (sub ?term (mapcar #'cons ?var-syms variables))))
             (multiple-value-bind (result succeeded)
-                (preil:%solve-1 preil.core::*world* variables (list clause))
+                (preil:%solve-1 variables (list clause))
               (when succeeded
                 (satisfy :?result result)))))))
 
@@ -143,7 +142,7 @@
                                                       (symbol-name symbol))))
                                     ?var-syms))
                  (clause (sub ?term (mapcar #'cons ?var-syms variables))))
-            (satisfy :?result (preil:%solve-all preil.core::*world* variables (list clause)))))))
+            (satisfy :?result (preil:%solve-all variables (list clause)))))))
 
   (%- (inc ?x ?y)
     ((?x)
@@ -192,4 +191,4 @@
       ((?chars)
        (when (and (listp ?chars) (every #'characterp ?chars))
          (satisfy :?string (coerce ?chars 'string)))))
-))
+  *world*)

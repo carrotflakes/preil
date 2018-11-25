@@ -5,7 +5,9 @@
         :preil.unify
         :preil.core)
   (:export #:initialize-memory
-           #:create-world
+           #:make-world
+           #:in-world
+           #:with-world
            #:<-
            #:%-
            #:import-world
@@ -25,18 +27,21 @@
         *write-table* (make-write-table size)))
 
 
-(defmacro create-world (&body body)
-  (let ((world (gensym "WORLD")))
-    `(let ((,world (make-world)))
-       (macrolet
-         ((<- (head &body body)
-            (list 'add-clause ',world `',head `',body))
-          (%- (head &body patterns)
-            (list 'add-predicate ',world `',head `',patterns))
-          (import-world (package)
-            (list 'merge-world ',world `(funcall (intern "GET-WORLD" ,package)))))
-         ,@body)
-       ,world)))
+(defun in-world (world) ; TODO :based '(world-1 world-2 ...)
+  (setf *world* world))
+
+(defmacro with-world ((world) &body body)
+  `(let ((*world* ,world))
+     ,@body))
+
+(defmacro <- (head &body body)
+  `(add-clause *world* ',head ',body))
+
+(defmacro %- (head &body patterns)
+  `(add-predicate *world* ',head ',patterns))
+
+(defmacro import-world (package)
+  `(merge-world *world* (funcall (intern "GET-WORLD" ,package))))
 
 
 (defmacro unwind-protect-memory (form)
@@ -47,33 +52,34 @@
          ,form
       (memory-rewind write-table-pointer))))
 
-(defun %solve-1 (world term clauses)
+(defun %solve-1 (term clauses)
   (unwind-protect-memory
    (block solve-1
-     (solve world term clauses
+     (solve term clauses
             (lambda (result)
               (return-from solve-1 (values result t)))))))
 
-(defmacro solve-1 (world term &body clauses)
-  `(%solve-1 ,world ',term (list ,@clauses)))
-
-(defmacro solvep (world &body clauses)
-  `(%solve-1 ,world t (list ,@clauses)))
-
-(defmacro do-solve (world (variables &body body) &rest clauses)
-  (let ((arguments (gensym "ARGUMENTS")))
-  `(solve ,world ',variables (list ,@clauses)
-          (lambda (,arguments)
-            (destructuring-bind ,variables ,arguments
-              ,@body)))))
-
-(defun %solve-all (world term clauses)
+(defun %solve-all (term clauses)
   (unwind-protect-memory
    (let ((result nil))
-     (solve world term clauses
+     (solve term clauses
             (lambda (term)
               (push term result)))
      (nreverse result))))
 
-(defmacro solve-all (world term &body clauses)
-  `(%solve-all ,world ',term (list ,@clauses)))
+
+(defmacro solve-1 (term &body clauses)
+  `(%solve-1 ',term (list ,@clauses)))
+
+(defmacro solvep (&body clauses)
+  `(%solve-1 t (list ,@clauses)))
+
+(defmacro do-solve ((variables &body body) &rest clauses)
+  (let ((arguments (gensym "ARGUMENTS")))
+  `(solve ',variables (list ,@clauses)
+          (lambda (,arguments)
+            (destructuring-bind ,variables ,arguments
+              ,@body)))))
+
+(defmacro solve-all (term &body clauses)
+  `(%solve-all ',term (list ,@clauses)))

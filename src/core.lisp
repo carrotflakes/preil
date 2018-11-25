@@ -3,7 +3,8 @@
   (:use :cl
         :preil.util
         :preil.unify)
-  (:export #:make-world
+  (:export #:*world*
+           #:make-world
            #:add-clause
            #:add-predicate
            #:merge-world
@@ -133,7 +134,7 @@
     (dolist (clause (world-clauses *world*))
       (dispatch-clause goal goals clause))))
 
-(defun solve (*world* term goals *resolved-function*
+(defun solve (term goals *resolved-function*
               &key (*memory* *memory*) (*pointer* *pointer*))
   '(print 'solve)
   '(print *pointer*)

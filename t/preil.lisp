@@ -12,32 +12,32 @@
 
 (initialize-memory 1000)
 
-(defvar world
-  (create-world
-    (import-world :prelude)))
+(in-world (make-world))
+
+(import-world :prelude)
 
 
-(is (solve-all world ?x '(append (1 2) (3 4) ?x))
+(is (solve-all ?x '(append (1 2) (3 4) ?x))
   '((1 2 3 4))
   :test #'equal)
 
-(is (solve-all world (?x ?y) '(append ?x ?y (1 2 3)))
+(is (solve-all (?x ?y) '(append ?x ?y (1 2 3)))
   '((() (1 2 3)) ((1) (2 3)) ((1 2) (3)) ((1 2 3) ()))
   :test #'equal)
 
-(is (solve-all world ?x '(format ?x "~a-~b" a 1))
+(is (solve-all ?x '(format ?x "~a-~b" a 1))
   '("A-1")
   :test #'equal)
 
-(is (solvep world '(< 1 2))
+(is (solvep '(< 1 2))
   t
   :test #'equal)
 
-(is (solve-1 world ?x '(prelude:find-1 (?x) (x) (member x (1 2 3))))
+(is (solve-1 ?x '(prelude:find-1 (?x) (x) (member x (1 2 3))))
   '1
   :test #'equal)
 
-(is (solve-1 world ?x '(prelude:find-all ?x (x y) (append x y (1 2 3))))
+(is (solve-1 ?x '(prelude:find-all ?x (x y) (append x y (1 2 3))))
   '((() (1 2 3)) ((1) (2 3)) ((1 2) (3)) ((1 2 3) ()))
   :test #'equal)
 

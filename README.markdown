@@ -8,20 +8,20 @@ A prolog-like logic programming library for Common Lisp.
 ;; First, you need secure some memory.
 (initialize-memory 1000)
 
-(defvar world
-  (create-world
-    ;; Define 'append' predicate.
-    (<- (append () ?xs ?xs))
-    (<- (append (?x . ?xs) ?ys (?x . ?zs))
-        (append ?xs ?ys ?zs))))
+(in-world (make-world))
+
+;; Define 'append' predicate.
+(<- (append () ?xs ?xs))
+(<- (append (?x . ?xs) ?ys (?x . ?zs))
+    (append ?xs ?ys ?zs))
 
 ;; Join 2 lists, (1 2 3) and (4 5).
-(print (solve-all world ?xs
+(print (solve-all ?xs
                   '(append (1 2 3) (4 5) ?xs)))
 ;; => ((1 2 3 4 5))
 
 ;; Enumerate all patterns separating (1 2 3).
-(print (solve-all world (?xs ?ys)
+(print (solve-all (?xs ?ys)
                   '(append ?xs ?ys (1 2 3))))
 ;; => ((NIL (1 2 3)) ((1) (2 3)) ((1 2) (3)) ((1 2 3) NIL))
 
