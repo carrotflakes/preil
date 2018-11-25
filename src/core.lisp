@@ -101,7 +101,8 @@
                       (exec goals))
                     (memory-rewind write-table-pointer-2))
                   parameters)
-           (return)))
+           (return)
+        finally (error "Out of implements" (substantiate (car goal) (cdr goal)))))
     (memory-rewind write-table-pointer-1)))
 
 (declaim (inline dispatch-clause))

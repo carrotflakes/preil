@@ -79,7 +79,7 @@
   (multiple-value-setq (term2 pointer2) (unified-value term2 pointer2))
 
   (cond
-    ((and (eq* term1 term2) (or (not (svar-p term1)) (eq pointer1 pointer2))) ; XXX
+    ((and (eq* term1 term2) (or (= pointer1 pointer2) (not (svar-p term1)))) ; XXX
      t)
     ((svar-p term1)
      (svar-bind term1 pointer1 term2 pointer2)
