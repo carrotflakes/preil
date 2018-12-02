@@ -66,6 +66,7 @@
                        (sub free-variables bindings)
                        free-variables
                        (eval `(lambda (%satisfy ,@bound-variables)
+                                (declare (ignorable %satisfy ,@bound-variables)) ; FIXME
                                 (macrolet (,satisfy-macro-definition)
                                   ,@body)))))))
               patterns))
@@ -136,15 +137,16 @@
       (funcall *resolved-function* (substantiate (caar goals) (cdar goals)))))
 
   (let ((goal (pop goals)))
-    (dolist (item (consult (car goal) (world-dictionary *world*)))
-      (if (clause-p item)
-          (dispatch-clause goal goals item)
-          (dispatch-predicate goal goals item)))
-          
-    '(dolist (predicate (world-predicates *world*))
-      (dispatch-predicate goal goals predicate))
-    '(dolist (clause (world-clauses *world*))
-      (dispatch-clause goal goals clause))))
+    (if (or (svar-p (car goal)) (svar-p (caar goal))) ; FIXME
+        (progn
+          (dolist (predicate (world-predicates *world*))
+            (dispatch-predicate goal goals predicate))
+          (dolist (clause (world-clauses *world*))
+            (dispatch-clause goal goals clause)))
+        (dolist (item (consult (car goal) (world-dictionary *world*)))
+          (if (clause-p item)
+              (dispatch-clause goal goals item)
+              (dispatch-predicate goal goals item))))))
 
 (defun solve (term goals *resolved-function*
               &key (*memory* *memory*) (*pointer* *pointer*))

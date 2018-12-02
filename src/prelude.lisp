@@ -118,6 +118,11 @@
      (unless (solvep ?term)
        (satisfy))))
 
+  (%- (groundp ?term)
+      ((?term)
+       (satisfy))
+      (()))
+
   (%- (find-1 ?result ?var-syms ?term)
     ((?var-syms ?term)
      (and (listp ?var-syms)
