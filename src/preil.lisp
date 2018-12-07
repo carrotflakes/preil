@@ -90,10 +90,11 @@
 
 (defmacro do-solve ((variables &body body) &rest clauses)
   (let ((arguments (gensym "ARGUMENTS")))
-  `(solve ',variables (list ,@clauses)
-          (lambda (,arguments)
-            (destructuring-bind ,variables ,arguments
-              ,@body)))))
+  `(unwind-protect-memory
+    (solve ',variables (list ,@clauses)
+           (lambda (,arguments)
+             (destructuring-bind ,variables ,arguments
+               ,@body))))))
 
 (defmacro solve-all (term &body clauses)
   `(%solve-all ',term (list ,@clauses)))
